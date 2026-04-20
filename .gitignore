@@ -1,0 +1,63 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+tesselbox
+tesselbox.exe
+bin/
+dist/
+build/
+*.apk
+*.app
+
+# Go
+*.test
+*.out
+coverage.txt
+go.work
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Game
+.tesselbox/
+saves/
+worlds/
+logs/
+*.log
+
+# Temp
+*.tmp
+*.temp
+.cache/
+
+# Archives
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# AI tools
+.qodo/
+.windsurf/
+.cursor/
+.claude/
+.continue/
+
+# Debug
+*.prof
+*.pprof
+*.trace
