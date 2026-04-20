@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // TradeStatus represents the status of a trade

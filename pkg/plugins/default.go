@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	"tesselbox/pkg/audio"
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/audio"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 )
 
 // DefaultPlugin contains all the original game content

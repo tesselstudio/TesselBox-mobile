@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/entities"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/entities"
 )
 
 // PluginWatcher monitors the plugins directory for changes

@@ -5,8 +5,8 @@ package survival
 import (
 	"time"
 
-	"tesselbox/pkg/items"
-	"tesselbox/pkg/player"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
 )
 
 // GameMode represents the current game mode

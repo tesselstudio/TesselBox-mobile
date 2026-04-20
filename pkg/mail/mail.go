@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // MailStatus represents the status of mail

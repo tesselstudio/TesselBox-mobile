@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"tesselbox/pkg/entities"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/entities"
 )
 
 // ChatHandler processes chat messages and commands

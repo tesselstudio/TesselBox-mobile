@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"image/color"
 
-	"tesselbox/pkg/equipment"
-	"tesselbox/pkg/gametime"
-	"tesselbox/pkg/health"
-	"tesselbox/pkg/survival"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/equipment"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/gametime"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/health"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/survival"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"

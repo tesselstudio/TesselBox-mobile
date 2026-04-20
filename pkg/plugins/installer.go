@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"tesselbox/pkg/entities"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/entities"
 )
 
 // PluginInstaller handles downloading and installing plugins

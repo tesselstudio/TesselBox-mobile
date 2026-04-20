@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"math"
 
-	"tesselbox/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
 )
 
 var (

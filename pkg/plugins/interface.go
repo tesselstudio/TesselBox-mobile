@@ -3,9 +3,9 @@ package plugins
 import (
 	"fmt"
 	"log"
-	"tesselbox/pkg/audio"
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/audio"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 )
 
 // GamePlugin defines the interface for all game content plugins

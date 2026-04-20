@@ -5,10 +5,10 @@ import (
 	"image/color"
 	"math"
 
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/game"
-	"tesselbox/pkg/items"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/game"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"tesselbox/pkg/config"
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 const (

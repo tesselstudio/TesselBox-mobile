@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"tesselbox/pkg/game"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/game"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )

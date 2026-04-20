@@ -3,7 +3,7 @@ package game
 import (
 	"log"
 
-	"tesselbox/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
 )
 
 // LaunchConfig contains configuration for launching the game

@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/rand"
 
-	"tesselbox/pkg/biomes"
-	"tesselbox/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/biomes"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
 )
 
 // TreeType represents different tree variants

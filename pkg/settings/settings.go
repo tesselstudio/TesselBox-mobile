@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"gopkg.in/yaml.v3"
-	"tesselbox/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
 )
 
 // Settings holds all game configuration

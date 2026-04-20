@@ -2,7 +2,7 @@ package crafting
 
 import (
 	"fmt"
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 
 	"github.com/tesselstudio/TesselBox-assets"
 

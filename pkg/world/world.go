@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"tesselbox/pkg/biomes"
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/gametime"
-	"tesselbox/pkg/hexagon"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/biomes"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/gametime"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/hexagon"
 )
 
 const (

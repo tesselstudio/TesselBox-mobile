@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"tesselbox/pkg/economy"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/economy"
 )
 
 // GuildWarStatus represents war state

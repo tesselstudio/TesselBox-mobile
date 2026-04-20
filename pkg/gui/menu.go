@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"tesselbox/pkg/config"
-	"tesselbox/pkg/security"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/security"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"

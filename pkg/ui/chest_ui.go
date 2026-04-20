@@ -8,8 +8,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"tesselbox/pkg/chest"
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/chest"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // ChestUI represents the chest inventory interface

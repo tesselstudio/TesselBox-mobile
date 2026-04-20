@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"tesselbox/pkg/economy"
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/economy"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // BossType represents boss difficulty

@@ -2,7 +2,7 @@ package audio
 
 import (
 	"log"
-	"tesselbox/pkg/biomes"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/biomes"
 )
 
 // SoundEffect represents different game sound effects

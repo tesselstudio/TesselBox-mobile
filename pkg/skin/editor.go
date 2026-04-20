@@ -13,7 +13,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"tesselbox/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
 )
 
 // SkinEditor represents the skin editing interface

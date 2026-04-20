@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"tesselbox/pkg/entities"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/entities"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"

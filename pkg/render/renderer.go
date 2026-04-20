@@ -7,12 +7,12 @@ import (
 	"math/rand"
 	"time"
 
-	"tesselbox/pkg/biomes"
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/gametime"
-	"tesselbox/pkg/hexagon"
-	"tesselbox/pkg/player"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/biomes"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/gametime"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/hexagon"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"

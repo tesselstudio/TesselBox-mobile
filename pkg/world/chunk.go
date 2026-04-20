@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"tesselbox/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
 )
 
 const (

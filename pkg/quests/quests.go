@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // QuestType represents quest category

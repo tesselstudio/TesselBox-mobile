@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"tesselbox/pkg/game"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/game"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )

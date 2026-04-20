@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // DungeonTier represents difficulty level

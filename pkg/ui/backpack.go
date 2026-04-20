@@ -9,9 +9,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
-	"tesselbox/pkg/equipment"
-	"tesselbox/pkg/health"
-	"tesselbox/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/equipment"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/health"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 )
 
 // BackpackUI represents the Minecraft-like inventory interface

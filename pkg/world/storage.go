@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
 )
 
 // WorldStorage handles persistent storage of world data

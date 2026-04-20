@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/economy"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/economy"
 )
 
 // VoteSite represents a voting website

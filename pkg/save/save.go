@@ -9,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"tesselbox/pkg/chest"
-	"tesselbox/pkg/config"
-	"tesselbox/pkg/equipment"
-	"tesselbox/pkg/health"
-	"tesselbox/pkg/items"
-	"tesselbox/pkg/player"
-	"tesselbox/pkg/survival"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/chest"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/config"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/equipment"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/health"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/survival"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 )
 
 // SaveData represents the complete game state that can be saved/loaded

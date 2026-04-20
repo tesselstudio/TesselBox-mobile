@@ -7,8 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 )
 
 const (

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/player"
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 )
 
 // Manager handles dimension switching and state management

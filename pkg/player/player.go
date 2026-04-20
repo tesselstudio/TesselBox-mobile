@@ -1,7 +1,7 @@
 package player
 
 import (
-	"tesselbox/pkg/world"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
 	"time"
 )
 
