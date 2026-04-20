@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"tesselbox/pkg/items"
 
-	"tesselbox/assets"
+	"github.com/tesselstudio/TesselBox-assets"
 
 	"gopkg.in/yaml.v3"
 )

@@ -1,4 +1,4 @@
-module tesselbox
+module github.com/tesselstudio/TesselBox-mobile
 
 go 1.25.0
 
@@ -9,10 +9,8 @@ require (
 	golang.org/x/crypto v0.37.0
 	golang.org/x/image v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
-	tesselbox/assets v0.0.0
+	github.com/tesselstudio/TesselBox-assets v0.0.0
 )
-
-replace tesselbox/assets => ./assets
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

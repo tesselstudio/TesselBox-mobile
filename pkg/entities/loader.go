@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"tesselbox/assets"
+	"github.com/tesselstudio/TesselBox-assets"
 	"time"
 
 	"gopkg.in/yaml.v3"

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"tesselbox/assets"
+	"github.com/tesselstudio/TesselBox-assets"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
