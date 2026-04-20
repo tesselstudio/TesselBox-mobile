@@ -163,16 +163,13 @@ func (dl *DataLoader) LoadOrganismsConfig() error {
 		return nil
 	}
 
-	data, err := assets.GetConfigFile("organisms.yaml")
 	if err != nil {
-		log.Printf("No organisms.yaml found, skipping organisms config")
 		return nil
 	}
 
 	var organisms map[string]*OrganismConfig
 	err = yaml.Unmarshal(data, &organisms)
 	if err != nil {
-		return fmt.Errorf("failed to parse organisms.yaml: %v", err)
 	}
 
 	// Convert organisms to entity templates

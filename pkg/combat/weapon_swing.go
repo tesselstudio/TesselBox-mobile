@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"time"
 
-	"tesselbox/pkg/enemies"
 )
 
 // WeaponSwing represents an active weapon swing attack

@@ -8,8 +8,6 @@ import (
 
 	"tesselbox/pkg/audio"
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/creatures"
-	"tesselbox/pkg/organisms"
 	"tesselbox/pkg/world"
 )
 
@@ -114,16 +112,10 @@ func (dp *DefaultPlugin) GetBlockProperties(blockType blocks.BlockType) (map[str
 }
 
 // GetCreatureTypes returns all available creature types
-func (dp *DefaultPlugin) GetCreatureTypes() []creatures.CreatureType {
-	return []creatures.CreatureType{
-		creatures.SLIME,
-		creatures.SPIDER,
-		creatures.ZOMBIE,
 	}
 }
 
 // GetCreatureDefinition returns a specific creature definition
-func (dp *DefaultPlugin) GetCreatureDefinition(creatureType creatures.CreatureType) (*CreatureDefinition, bool) {
 	// Create a basic creature definition
 	def := &CreatureDefinition{
 		Type:   creatureType,
@@ -137,18 +129,10 @@ func (dp *DefaultPlugin) GetCreatureDefinition(creatureType creatures.CreatureTy
 }
 
 // GetOrganismTypes returns all available organism types
-func (dp *DefaultPlugin) GetOrganismTypes() []organisms.OrganismType {
-	return []organisms.OrganismType{
-		organisms.TREE,
-		organisms.BUSH,
-		organisms.FLOWER,
-		organisms.MUSHROOM,
-		organisms.VENUS_FLYTRAP,
 	}
 }
 
 // GetOrganismDefinition returns a specific organism definition
-func (dp *DefaultPlugin) GetOrganismDefinition(organismType organisms.OrganismType) (*OrganismDefinition, bool) {
 	// Create a basic organism definition
 	def := &OrganismDefinition{
 		Type:   organismType,
@@ -216,13 +200,11 @@ func (dp *DefaultPlugin) OnBlockBroken(x, y, z int, blockType blocks.BlockType) 
 }
 
 // OnCreatureSpawn handles creature spawn events
-func (dp *DefaultPlugin) OnCreatureSpawn(creature *creatures.Creature) error {
 	log.Printf("Creature spawned: %s", stringToCreatureName(creature.Type))
 	return nil
 }
 
 // OnCreatureDeath handles creature death events
-func (dp *DefaultPlugin) OnCreatureDeath(creature *creatures.Creature) error {
 	log.Printf("Creature died: %s", stringToCreatureName(creature.Type))
 	return nil
 }
@@ -235,12 +217,6 @@ func (dp *DefaultPlugin) OnTick(world *world.World, deltaTime float64) error {
 // Private helper methods
 
 func (dp *DefaultPlugin) spawnRandomOrganism(world *world.World) {
-	organismTypes := []organisms.OrganismType{
-		organisms.TREE,
-		organisms.BUSH,
-		organisms.FLOWER,
-		organisms.MUSHROOM,
-		organisms.VENUS_FLYTRAP,
 	}
 
 	organismType := organismTypes[rand.Intn(len(organismTypes))]
@@ -249,7 +225,6 @@ func (dp *DefaultPlugin) spawnRandomOrganism(world *world.World) {
 	x := rand.Intn(100)
 	y := 50
 
-	organism := &organisms.Organism{
 		Type: organismType,
 		X:    float64(x),
 		Y:    float64(y),
@@ -259,10 +234,6 @@ func (dp *DefaultPlugin) spawnRandomOrganism(world *world.World) {
 }
 
 func (dp *DefaultPlugin) spawnRandomCreature(world *world.World) {
-	creatureTypes := []creatures.CreatureType{
-		creatures.SLIME,
-		creatures.SPIDER,
-		creatures.ZOMBIE,
 	}
 
 	creatureType := creatureTypes[rand.Intn(len(creatureTypes))]
@@ -271,7 +242,6 @@ func (dp *DefaultPlugin) spawnRandomCreature(world *world.World) {
 	x := rand.Intn(100)
 	y := 50
 
-	creature := &creatures.Creature{
 		ID:        fmt.Sprintf("creature_%d", rand.Intn(10000)),
 		Type:      creatureType,
 		X:         float64(x),
@@ -280,7 +250,6 @@ func (dp *DefaultPlugin) spawnRandomCreature(world *world.World) {
 		MaxHealth: getDefaultCreatureHealth(creatureType),
 		Damage:    getDefaultCreatureDamage(creatureType),
 		Speed:     getDefaultCreatureSpeed(creatureType),
-		AIState:   creatures.IDLE,
 		IsHostile: isCreatureHostile(creatureType),
 		SpawnTime: time.Now(),
 	}
@@ -306,11 +275,6 @@ func stringToBlockName(blockType blocks.BlockType) string {
 	return "Unknown"
 }
 
-func stringToCreatureName(creatureType creatures.CreatureType) string {
-	names := map[creatures.CreatureType]string{
-		creatures.SLIME:  "Slime",
-		creatures.SPIDER: "Spider",
-		creatures.ZOMBIE: "Zombie",
 	}
 	if name, exists := names[creatureType]; exists {
 		return name
@@ -318,13 +282,6 @@ func stringToCreatureName(creatureType creatures.CreatureType) string {
 	return "Unknown"
 }
 
-func stringToOrganismName(organismType organisms.OrganismType) string {
-	names := map[organisms.OrganismType]string{
-		organisms.TREE:          "Tree",
-		organisms.BUSH:          "Bush",
-		organisms.FLOWER:        "Flower",
-		organisms.MUSHROOM:      "Mushroom",
-		organisms.VENUS_FLYTRAP: "Venus Flytrap",
 	}
 	if name, exists := names[organismType]; exists {
 		return name
@@ -422,11 +379,6 @@ func isBlockBreakable(blockType blocks.BlockType) bool {
 	return true
 }
 
-func getDefaultCreatureHealth(creatureType creatures.CreatureType) float64 {
-	health := map[creatures.CreatureType]float64{
-		creatures.SLIME:  10,
-		creatures.SPIDER: 15,
-		creatures.ZOMBIE: 20,
 	}
 	if h, exists := health[creatureType]; exists {
 		return h
@@ -434,11 +386,6 @@ func getDefaultCreatureHealth(creatureType creatures.CreatureType) float64 {
 	return 10
 }
 
-func getDefaultCreatureDamage(creatureType creatures.CreatureType) float64 {
-	damage := map[creatures.CreatureType]float64{
-		creatures.SLIME:  2,
-		creatures.SPIDER: 4,
-		creatures.ZOMBIE: 6,
 	}
 	if d, exists := damage[creatureType]; exists {
 		return d
@@ -446,11 +393,6 @@ func getDefaultCreatureDamage(creatureType creatures.CreatureType) float64 {
 	return 2
 }
 
-func getDefaultCreatureSpeed(creatureType creatures.CreatureType) float64 {
-	speed := map[creatures.CreatureType]float64{
-		creatures.SLIME:  1.0,
-		creatures.SPIDER: 1.5,
-		creatures.ZOMBIE: 0.8,
 	}
 	if s, exists := speed[creatureType]; exists {
 		return s
@@ -458,11 +400,6 @@ func getDefaultCreatureSpeed(creatureType creatures.CreatureType) float64 {
 	return 1.0
 }
 
-func getDefaultCreatureColor(creatureType creatures.CreatureType) string {
-	colors := map[creatures.CreatureType]string{
-		creatures.SLIME:  "#00FF00",
-		creatures.SPIDER: "#8B4513",
-		creatures.ZOMBIE: "#808080",
 	}
 	if color, exists := colors[creatureType]; exists {
 		return color
@@ -470,17 +407,8 @@ func getDefaultCreatureColor(creatureType creatures.CreatureType) string {
 	return "#FFFFFF"
 }
 
-func isCreatureHostile(creatureType creatures.CreatureType) bool {
-	return creatureType == creatures.ZOMBIE || creatureType == creatures.SPIDER
 }
 
-func getDefaultOrganismHeight(organismType organisms.OrganismType) float64 {
-	height := map[organisms.OrganismType]float64{
-		organisms.TREE:          8.0,
-		organisms.BUSH:          2.0,
-		organisms.FLOWER:        1.0,
-		organisms.MUSHROOM:      1.5,
-		organisms.VENUS_FLYTRAP: 1.0,
 	}
 	if h, exists := height[organismType]; exists {
 		return h
@@ -488,13 +416,6 @@ func getDefaultOrganismHeight(organismType organisms.OrganismType) float64 {
 	return 2.0
 }
 
-func getDefaultOrganismColor(organismType organisms.OrganismType) string {
-	colors := map[organisms.OrganismType]string{
-		organisms.TREE:          "#8B4513",
-		organisms.BUSH:          "#228B22",
-		organisms.FLOWER:        "#FF69B4",
-		organisms.MUSHROOM:      "#FFD700",
-		organisms.VENUS_FLYTRAP: "#FF1493",
 	}
 	if color, exists := colors[organismType]; exists {
 		return color

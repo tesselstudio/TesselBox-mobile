@@ -11,7 +11,6 @@ import (
 
 	"tesselbox/pkg/chest"
 	"tesselbox/pkg/config"
-	"tesselbox/pkg/enemies"
 	"tesselbox/pkg/equipment"
 	"tesselbox/pkg/health"
 	"tesselbox/pkg/items"
@@ -277,8 +276,6 @@ func (sm *SaveManager) SaveGame(gameState *GameState) error {
 	}
 
 	// Save zombies
-	if gameState.ZombieSpawner != nil {
-		zombies := gameState.ZombieSpawner.Zombies
 		saveData.Zombies = make([]ZombieData, 0, len(zombies))
 		for _, zombie := range zombies {
 			if zombie.IsAlive {
@@ -572,12 +569,9 @@ func (sm *SaveManager) ApplySaveData(saveData *SaveData, gameState *GameState) e
 	}
 
 	// Load zombies
-	if len(saveData.Zombies) > 0 && gameState.ZombieSpawner != nil {
 		// Clear existing zombies and recreate from save
-		gameState.ZombieSpawner.Zombies = make([]*enemies.Zombie, 0, len(saveData.Zombies))
 		for _, zombieData := range saveData.Zombies {
 			zombie := enemies.NewZombie(
-				len(gameState.ZombieSpawner.Zombies),
 				enemies.ZombieType(zombieData.Type),
 				zombieData.X,
 				zombieData.Y,
@@ -585,10 +579,8 @@ func (sm *SaveManager) ApplySaveData(saveData *SaveData, gameState *GameState) e
 			zombie.Health = zombieData.Health
 			zombie.MaxHealth = zombieData.MaxHealth
 			zombie.State = enemies.ZombieState(zombieData.State)
-			gameState.ZombieSpawner.Zombies = append(gameState.ZombieSpawner.Zombies, zombie)
 		}
 		// Update NextID to avoid ID conflicts
-		gameState.ZombieSpawner.NextID = len(gameState.ZombieSpawner.Zombies) + 1
 	}
 
 	// Load chests
@@ -733,7 +725,6 @@ type GameState struct {
 	HealthSystem    *health.LocationalHealthSystem
 
 	// Enemy systems
-	ZombieSpawner *enemies.ZombieSpawner
 
 	// Storage systems
 	ChestManager *chest.ChestManager

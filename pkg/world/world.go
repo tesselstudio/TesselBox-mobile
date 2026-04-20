@@ -9,10 +9,8 @@ import (
 
 	"tesselbox/pkg/biomes"
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/creatures"
 	"tesselbox/pkg/gametime"
 	"tesselbox/pkg/hexagon"
-	"tesselbox/pkg/organisms"
 )
 
 const (
@@ -31,8 +29,6 @@ const (
 type World struct {
 	Chunks    map[[2]int]*Chunk
 	Seed      int64
-	Organisms []*organisms.Organism
-	Creatures []*creatures.Creature
 	Storage   *WorldStorage
 	WorldName string
 
@@ -55,8 +51,6 @@ func NewWorld(worldName string) *World {
 	world := &World{
 		Chunks:        make(map[[2]int]*Chunk),
 		Seed:          seed,
-		Organisms:     []*organisms.Organism{},
-		Creatures:     []*creatures.Creature{},
 		Storage:       NewWorldStorage(worldName),
 		WorldName:     worldName,
 		spatialHash:   make(map[[2]int][]*Hexagon),
@@ -100,7 +94,6 @@ func (w *World) ValidateSeed(seed int64) bool {
 func NewWorldFromStorage(worldName string) (*World, error) {
 	world := &World{
 		Chunks:    make(map[[2]int]*Chunk),
-		Organisms: []*organisms.Organism{},
 		Storage:   NewWorldStorage(worldName),
 		WorldName: worldName,
 	}
@@ -527,7 +520,6 @@ func (w *World) generateChunk(chunk *Chunk) {
 					hexagonCoords := hexagon.HexRound(q, r)
 					orgHex, _ := hexagon.AxialToHex(hexagonCoords.Q, hexagonCoords.R)
 
-					organism := organisms.CreateOrganism(orgType, x, y, orgHex)
 					if organism != nil {
 						w.Organisms = append(w.Organisms, organism)
 					}
@@ -707,8 +699,6 @@ func (w *World) UnloadAllChunks() {
 }
 
 // GetNearbyOrganisms returns organisms within a radius of the given position
-func (w *World) GetNearbyOrganisms(x, y, radius float64) []*organisms.Organism {
-	nearby := []*organisms.Organism{}
 	radiusSq := radius * radius
 
 	for _, org := range w.Organisms {
@@ -821,7 +811,6 @@ func (w *World) DamageBlock(hex hexagon.Hexagon, chunkZ int, damage float64) boo
 	}
 	return false
 }
-func (w *World) GetOrganismAt(x, y, tolerance float64) *organisms.Organism {
 	toleranceSq := tolerance * tolerance
 
 	for _, org := range w.Organisms {
@@ -908,16 +897,12 @@ func (w *World) SpawnCreatures(dayNightCycle *gametime.DayNightCycle, playerX, p
 		}
 
 		// Determine creature type based on biome and time
-		var creatureType creatures.CreatureType
 		if isNightTime {
 			// Night spawns
 			switch rand.Intn(3) {
 			case 0:
-				creatureType = creatures.SLIME
 			case 1:
-				creatureType = creatures.SPIDER
 			case 2:
-				creatureType = creatures.ZOMBIE
 			}
 		} else {
 			// Day spawns - only passive or less aggressive creatures
@@ -930,7 +915,6 @@ func (w *World) SpawnCreatures(dayNightCycle *gametime.DayNightCycle, playerX, p
 		q, r := hexagon.PixelToHex(hex.X, hex.Y, HexSize)
 		hexagonCoords := hexagon.HexRound(q, r)
 		creatureHex, _ := hexagon.AxialToHex(hexagonCoords.Q, hexagonCoords.R)
-		creature := creatures.NewCreature(creatureType, spawnX, spawnY, creatureHex)
 		w.Creatures = append(w.Creatures, creature)
 	}
 }
@@ -950,7 +934,6 @@ func (w *World) UpdateCreatures(playerX, playerY float64, deltaTime float64) {
 
 // RemoveDeadCreatures removes creatures that have died
 func (w *World) RemoveDeadCreatures() {
-	var aliveCreatures []*creatures.Creature
 	for _, creature := range w.Creatures {
 		if creature.IsAlive() {
 			aliveCreatures = append(aliveCreatures, creature)
@@ -1026,8 +1009,6 @@ func (w *World) checkPositionForSpawn(x, y float64) (float64, float64) {
 }
 
 // GetCreaturesInArea returns creatures within a certain radius of a point
-func (w *World) GetCreaturesInArea(centerX, centerY, radius float64) []*creatures.Creature {
-	var nearbyCreatures []*creatures.Creature
 	for _, creature := range w.Creatures {
 		dx := creature.X - centerX
 		dy := creature.Y - centerY

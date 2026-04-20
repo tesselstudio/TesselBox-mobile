@@ -9,10 +9,8 @@ import (
 
 	"tesselbox/pkg/biomes"
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/creatures"
 	"tesselbox/pkg/gametime"
 	"tesselbox/pkg/hexagon"
-	"tesselbox/pkg/organisms"
 	"tesselbox/pkg/player"
 	"tesselbox/pkg/world"
 
@@ -309,11 +307,9 @@ func (g *Game) Update() error {
 
 	// Handle dead organisms and remove them
 	if g.World != nil {
-		var aliveOrganisms []*organisms.Organism
 		for _, org := range g.World.Organisms {
 			if !org.IsAlive() {
 				// Drop items
-				drops := organisms.GetDrops(org)
 				for _, itemName := range drops {
 					// For now, just print what was dropped (similar to creatures)
 					fmt.Printf("Organism dropped: %s\n", itemName)
@@ -394,11 +390,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			// Choose color based on creature type
 			var creatureColor color.RGBA
 			switch creature.Type {
-			case creatures.SLIME:
 				creatureColor = color.RGBA{0, 255, 0, 255} // Green
-			case creatures.SPIDER:
 				creatureColor = color.RGBA{0, 0, 0, 255} // Black
-			case creatures.ZOMBIE:
 				creatureColor = color.RGBA{0, 100, 0, 255} // Dark green
 			default:
 				creatureColor = color.RGBA{128, 128, 128, 255} // Gray
@@ -406,7 +399,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 			// Draw creature as a square (zombies same size as player: 50x50)
 			size := 20.0
-			if creature.Type == creatures.ZOMBIE {
 				size = 50.0 // Same size as player
 			}
 			ebitenutil.DrawRect(screen, cX-size/2, cY-size/2, size, size, creatureColor)
@@ -442,11 +434,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			// Choose color based on organism type
 			var orgColor color.RGBA
 			switch org.Type {
-			case organisms.TREE:
 				orgColor = color.RGBA{139, 69, 19, 255} // Brown for tree trunk
-			case organisms.BUSH:
 				orgColor = color.RGBA{34, 139, 34, 255} // Forest green for bush
-			case organisms.FLOWER:
 				orgColor = color.RGBA{255, 0, 255, 255} // Magenta for flower
 			default:
 				orgColor = color.RGBA{128, 128, 128, 255} // Gray

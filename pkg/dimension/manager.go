@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/enemies"
 	"tesselbox/pkg/player"
 	"tesselbox/pkg/world"
 )
@@ -221,9 +220,6 @@ func (m *Manager) Save() error {
 		state.ReturnPortalY = m.RandomlandDim.ReturnPortalY
 
 		// Save Randomland zombies
-		if m.RandomlandDim.ZombieSpawner != nil {
-			state.RandomlandZombies = make([]ZombieData, 0, len(m.RandomlandDim.ZombieSpawner.Zombies))
-			for _, zombie := range m.RandomlandDim.ZombieSpawner.Zombies {
 				if zombie.IsAlive {
 					state.RandomlandZombies = append(state.RandomlandZombies, ZombieData{
 						ID:        zombie.ID,
@@ -293,11 +289,8 @@ func (m *Manager) Load() error {
 		}
 
 		// Restore Randomland zombies
-		if len(state.RandomlandZombies) > 0 && m.RandomlandDim.ZombieSpawner != nil {
-			m.RandomlandDim.ZombieSpawner.Zombies = make([]*enemies.Zombie, 0, len(state.RandomlandZombies))
 			for _, zombieData := range state.RandomlandZombies {
 				zombie := enemies.NewZombie(
-					len(m.RandomlandDim.ZombieSpawner.Zombies),
 					enemies.ZombieType(zombieData.Type),
 					zombieData.X,
 					zombieData.Y,
@@ -307,11 +300,8 @@ func (m *Manager) Load() error {
 				zombie.MaxHealth = zombieData.MaxHealth
 				zombie.IsAlive = zombieData.IsAlive
 				zombie.State = enemies.ZombieState(zombieData.State)
-				m.RandomlandDim.ZombieSpawner.Zombies = append(m.RandomlandDim.ZombieSpawner.Zombies, zombie)
 			}
 			// Update NextID to avoid ID conflicts
-			m.RandomlandDim.ZombieSpawner.NextID = len(m.RandomlandDim.ZombieSpawner.Zombies) + 1
-			fmt.Printf("Restored %d Randomland zombies\n", len(m.RandomlandDim.ZombieSpawner.Zombies))
 		}
 	}
 

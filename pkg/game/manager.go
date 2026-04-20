@@ -10,7 +10,6 @@ import (
 	"tesselbox/pkg/combat"
 	"tesselbox/pkg/crafting"
 	"tesselbox/pkg/debug"
-	"tesselbox/pkg/enemies"
 	"tesselbox/pkg/equipment"
 	"tesselbox/pkg/gametime"
 	"tesselbox/pkg/health"
@@ -89,7 +88,6 @@ type GameManager struct {
 	DeathScreen       *ui.DeathScreen
 
 	// Enemy systems
-	ZombieSpawner *enemies.ZombieSpawner
 
 	// Game state
 	SelectedBlock string
@@ -262,9 +260,6 @@ func NewGameManager(worldName string, worldSeed int64, creativeMode bool, screen
 	gm.ScreenFlash = ui.NewScreenFlash()
 	gm.DirectionalHitInd = ui.NewDirectionalHitManager()
 	gm.DeathScreen = ui.NewDeathScreen(screenWidth, screenHeight)
-
-	// Initialize enemy systems
-	gm.ZombieSpawner = enemies.NewZombieSpawner(gm.DayNightCycle)
 
 	log.Printf("GameManager initialized successfully")
 	return gm

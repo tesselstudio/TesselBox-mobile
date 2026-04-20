@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/enemies"
 	"tesselbox/pkg/world"
 )
 
@@ -48,7 +47,6 @@ type RandomlandDimension struct {
 	Generated     bool
 	ReturnPortalX float64
 	ReturnPortalY float64
-	ZombieSpawner *enemies.ZombieSpawner
 	LastVisitTime time.Time
 }
 
@@ -56,7 +54,6 @@ type RandomlandDimension struct {
 func NewRandomlandDimension(worldName string) *RandomlandDimension {
 	// Use a unique world name to avoid conflicts with player worlds
 	dimWorldName := worldName + "__randomland_dim"
-	spawner := enemies.NewZombieSpawner(nil) // No day/night cycle in randomland
 	// Tune spawn rate for Randomland (2x faster spawning, higher cap)
 	spawner.SpawnCooldown = 1500 * time.Millisecond // 1.5s instead of 3s
 	spawner.MaxZombies = 25                         // Higher than overworld default of 15
@@ -67,7 +64,6 @@ func NewRandomlandDimension(worldName string) *RandomlandDimension {
 		Generated:     false,
 		ReturnPortalX: ReturnPortalX,
 		ReturnPortalY: ReturnPortalY,
-		ZombieSpawner: spawner,
 		LastVisitTime: time.Now(),
 	}
 }
@@ -323,7 +319,6 @@ func (r *RandomlandDimension) spawnZombies() {
 			if distance > 10000 { // At least 100 pixels away
 				// Create zombie
 				zombie := enemies.NewZombie(spawned, enemies.ZombieNormal, x, y)
-				r.ZombieSpawner.Zombies = append(r.ZombieSpawner.Zombies, zombie)
 				spawned++
 			}
 		}
@@ -363,7 +358,6 @@ func (r *RandomlandDimension) Update(playerX, playerY float64, deltaTime float64
 	}
 
 	// Update zombies (ambient light = 0.5 for randomland - always dim)
-	r.ZombieSpawner.Update(deltaTime, nil, 0.5, collisionFunc, spawnFunc)
 }
 
 // IsNearReturnPortal checks if a position is near the return portal

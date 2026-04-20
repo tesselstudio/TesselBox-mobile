@@ -5,8 +5,6 @@ import (
 	"log"
 	"tesselbox/pkg/audio"
 	"tesselbox/pkg/blocks"
-	"tesselbox/pkg/creatures"
-	"tesselbox/pkg/organisms"
 	"tesselbox/pkg/world"
 )
 
@@ -27,10 +25,6 @@ type GamePlugin interface {
 	GetBlockTypes() []blocks.BlockType
 	GetBlockDefinition(blockType blocks.BlockType) (*BlockDefinition, bool)
 	GetBlockProperties(blockType blocks.BlockType) (map[string]interface{}, bool)
-	GetCreatureTypes() []creatures.CreatureType
-	GetCreatureDefinition(creatureType creatures.CreatureType) (*CreatureDefinition, bool)
-	GetOrganismTypes() []organisms.OrganismType
-	GetOrganismDefinition(organismType organisms.OrganismType) (*OrganismDefinition, bool)
 	GetAudioTypes() []audio.AudioType
 	GetAudioDefinition(audioType audio.AudioType) (*AudioDefinition, bool)
 
@@ -42,8 +36,6 @@ type GamePlugin interface {
 	// Game hooks
 	OnBlockPlaced(x, y, z int, blockType blocks.BlockType) error
 	OnBlockBroken(x, y, z int, blockType blocks.BlockType) error
-	OnCreatureSpawn(creature *creatures.Creature) error
-	OnCreatureDeath(creature *creatures.Creature) error
 	OnTick(world *world.World, deltaTime float64) error
 }
 
@@ -166,7 +158,6 @@ type BlockDefinition struct {
 }
 
 type CreatureDefinition struct {
-	Type   creatures.CreatureType
 	Name   string
 	Health float64
 	Damage float64
@@ -175,7 +166,6 @@ type CreatureDefinition struct {
 }
 
 type OrganismDefinition struct {
-	Type   organisms.OrganismType
 	Name   string
 	Height float64
 	Color  string

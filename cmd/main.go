@@ -23,7 +23,6 @@ import (
 	"tesselbox/pkg/crafting"
 	"tesselbox/pkg/debug"
 	"tesselbox/pkg/dimension"
-	"tesselbox/pkg/enemies"
 	"tesselbox/pkg/equipment"
 	"tesselbox/pkg/gametime"
 	"tesselbox/pkg/gui"
@@ -276,7 +275,6 @@ type Game struct {
 	loadingScreen *ui.LoadingScreen
 
 	// Enemy systems
-	zombieSpawner *enemies.ZombieSpawner
 
 	// Layer system (surface=0, middle=1, back=2)
 	currentLayer int
@@ -471,10 +469,8 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	g.backpackUI.SetSelectedSlot(g.player.GetSelectedSlot())
 
 	// Create zombie spawner
-	g.zombieSpawner = enemies.NewZombieSpawner(g.dayNightCycle)
 
 	// Set up damage callback for zombie attacks
-	g.zombieSpawner.OnPlayerDamage = func(damage float64, zombieX, zombieY float64) {
 		// Apply damage to player health system
 		if g.healthSystem != nil {
 			// Determine which body part to damage based on zombie position
@@ -775,7 +771,6 @@ func (g *Game) Update() error {
 		}
 		// Only update overworld zombies when in overworld (not in Randomland)
 		if g.dimensionManager == nil || !g.dimensionManager.IsInRandomland() {
-			g.zombieSpawner.Update(deltaTime, g.player, ambientLight, zombieCollisionFunc, zombieSpawnFunc)
 		}
 
 		// Update weather system
@@ -1968,14 +1963,6 @@ func (g *Game) drawGameScene(screen *ebiten.Image) {
 	g.drawWeaponSwing(screen)
 
 	// Draw zombies (only on current layer)
-	g.drawZombies(screen)
-
-	// Draw dropped items (only on current layer)
-	g.drawDroppedItems(screen)
-
-	// Draw weather particles
-	g.weatherSystem.Draw(screen, g.cameraX, g.cameraY)
-}
 
 // drawBlocksBatched draws blocks in batches grouped by color for performance optimization
 func (g *Game) drawBlocksBatched(screen *ebiten.Image, blockList []*world.Hexagon) {
@@ -2706,119 +2693,6 @@ func (g *Game) drawPlayer(screen *ebiten.Image) {
 	}
 }
 
-// drawZombies draws all active zombies (overworld and randomland)
-func (g *Game) drawZombies(screen *ebiten.Image) {
-	// Collect zombies from both spawners
-	var allZombies []*enemies.Zombie
-
-	// Add overworld zombies
-	if g.zombieSpawner != nil {
-		allZombies = append(allZombies, g.zombieSpawner.Zombies...)
-	}
-
-	// Add Randomland zombies if in that dimension
-	if g.dimensionManager != nil && g.dimensionManager.IsInRandomland() {
-		if g.dimensionManager.RandomlandDim != nil && g.dimensionManager.RandomlandDim.ZombieSpawner != nil {
-			allZombies = append(allZombies, g.dimensionManager.RandomlandDim.ZombieSpawner.Zombies...)
-		}
-	}
-
-	for _, zombie := range allZombies {
-		if !zombie.IsAlive {
-			continue
-		}
-
-		screenX := zombie.X - g.cameraX
-		screenY := zombie.Y - g.cameraY
-
-		// Don't draw if off screen
-		if screenX < -100 || screenX > ScreenWidth+100 || screenY < -100 || screenY > ScreenHeight+100 {
-			continue
-		}
-
-		// Green version of player (like player but green skin)
-		var bodyColor, headColor, armColor, legColor color.RGBA
-		if zombie.IsBurning {
-			// Burning - orange like fire
-			bodyColor = color.RGBA{255, 100, 50, 255}
-			headColor = color.RGBA{255, 120, 60, 255}
-			armColor = color.RGBA{255, 100, 50, 255}
-			legColor = color.RGBA{200, 80, 40, 255}
-		} else {
-			// Green version of player (like player but green skin)
-			bodyColor = color.RGBA{75, 118, 60, 255}   // Green shirt
-			headColor = color.RGBA{120, 200, 100, 255} // Green skin
-			armColor = color.RGBA{75, 118, 60, 255}    // Green arms
-			legColor = color.RGBA{50, 80, 40, 255}     // Green pants
-
-			// Different shades for zombie variants
-			switch zombie.Type {
-			case enemies.ZombieFast:
-				bodyColor = color.RGBA{100, 160, 80, 255}  // Lighter green
-				headColor = color.RGBA{150, 220, 120, 255} // Brighter green skin
-				armColor = color.RGBA{100, 160, 80, 255}
-				legColor = color.RGBA{70, 110, 50, 255}
-			case enemies.ZombieStrong:
-				bodyColor = color.RGBA{60, 100, 50, 255}  // Darker green
-				headColor = color.RGBA{100, 160, 80, 255} // Darker green skin
-				armColor = color.RGBA{60, 100, 50, 255}
-				legColor = color.RGBA{40, 70, 35, 255}
-			case enemies.ZombieTank:
-				bodyColor = color.RGBA{50, 80, 40, 255}  // Very dark green
-				headColor = color.RGBA{80, 130, 60, 255} // Dark green skin
-				armColor = color.RGBA{50, 80, 40, 255}
-				legColor = color.RGBA{30, 50, 25, 255}
-			}
-		}
-
-		// Draw zombie body (50x50) - same structure as player
-		bodyWidth := 50.0
-		bodyHeight := 50.0
-		ebitenutil.DrawRect(screen, screenX-5, screenY+10, bodyWidth+10, bodyHeight-10, bodyColor)
-
-		// Draw zombie head (25x25) - centered on top like player
-		headSize := 25.0
-		headX := screenX + (bodyWidth-headSize)/2
-		headY := screenY - 5
-		ebitenutil.DrawRect(screen, headX, headY, headSize, headSize, headColor)
-
-		// Draw zombie arms (10x30) - same as player
-		armWidth := 10.0
-		armHeight := 30.0
-		// Left arm
-		ebitenutil.DrawRect(screen, screenX-armWidth-5, screenY+20, armWidth, armHeight, armColor)
-		// Right arm
-		ebitenutil.DrawRect(screen, screenX+bodyWidth+5, screenY+20, armWidth, armHeight, armColor)
-
-		// Draw zombie legs (12x20) - same as player
-		legWidth := 12.0
-		legHeight := 20.0
-		// Left leg
-		ebitenutil.DrawRect(screen, screenX+8, screenY+bodyHeight-legHeight, legWidth, legHeight, legColor)
-		// Right leg
-		ebitenutil.DrawRect(screen, screenX+bodyWidth-legWidth-8, screenY+bodyHeight-legHeight, legWidth, legHeight, legColor)
-
-		// Draw health bar above zombie
-		healthBarWidth := zombie.Width
-		healthBarHeight := 4.0
-		healthPct := zombie.Health / zombie.MaxHealth
-		healthWidth := healthBarWidth * healthPct
-
-		// Background (gray)
-		ebitenutil.DrawRect(screen, screenX, screenY-15, healthBarWidth, healthBarHeight, color.RGBA{50, 50, 50, 255})
-
-		// Health (green to red based on health)
-		var healthColor color.RGBA
-		if healthPct > 0.5 {
-			healthColor = color.RGBA{0, 255, 0, 255}
-		} else if healthPct > 0.25 {
-			healthColor = color.RGBA{255, 255, 0, 255}
-		} else {
-			healthColor = color.RGBA{255, 0, 0, 255}
-		}
-		ebitenutil.DrawRect(screen, screenX, screenY-15, healthWidth, healthBarHeight, healthColor)
-	}
-}
 
 // drawWeaponSwing draws the weapon swing effect
 func (g *Game) drawWeaponSwing(screen *ebiten.Image) {
@@ -2862,7 +2736,6 @@ func (g *Game) drawWeaponSwing(screen *ebiten.Image) {
 
 // performWeaponAttack executes a weapon swing attack
 func (g *Game) performWeaponAttack() {
-	if g.weaponSystem == nil || g.zombieSpawner == nil {
 		return
 	}
 
@@ -2884,13 +2757,11 @@ func (g *Game) performWeaponAttack() {
 	}
 
 	// Perform attack
-	results := g.weaponSystem.PerformAttack(playerX, playerY, mouseWorldX, mouseWorldY, damage, g.zombieSpawner.Zombies)
 
 	// Apply damage to hit zombies and show indicators
 	for _, result := range results {
 		if result.Hit {
 			// Find the zombie that was hit and apply damage
-			for _, zombie := range g.zombieSpawner.Zombies {
 				if zombie.IsAlive &&
 					math.Abs(zombie.X+zombie.Width/2-result.HitX) < 10 &&
 					math.Abs(zombie.Y+zombie.Height/2-result.HitY) < 10 {
@@ -3145,7 +3016,6 @@ func (g *Game) createSaveState() *save.GameState {
 		HealthSystem:    g.healthSystem,
 
 		// Enemy systems
-		ZombieSpawner: g.zombieSpawner,
 
 		// Storage systems
 		ChestManager: g.chestManager,
