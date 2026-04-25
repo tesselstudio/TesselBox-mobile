@@ -54,9 +54,9 @@ type RandomlandDimension struct {
 func NewRandomlandDimension(worldName string) *RandomlandDimension {
 	// Use a unique world name to avoid conflicts with player worlds
 	dimWorldName := worldName + "__randomland_dim"
-	// Tune spawn rate for Randomland (2x faster spawning, higher cap)
-	spawner.SpawnCooldown = 1500 * time.Millisecond // 1.5s instead of 3s
-	spawner.MaxZombies = 25                         // Higher than overworld default of 15
+	// TODO: Tune spawn rate for Randomland when creature system is implemented
+	// spawner.SpawnCooldown = 1500 * time.Millisecond
+	// spawner.MaxZombies = 25
 	return &RandomlandDimension{
 		World:         world.NewWorld(dimWorldName),
 		Type:          Randomland,
@@ -317,8 +317,8 @@ func (r *RandomlandDimension) spawnZombies() {
 			distance := dx*dx + dy*dy
 
 			if distance > 10000 { // At least 100 pixels away
-				// Create zombie
-				zombie := enemies.NewZombie(spawned, enemies.ZombieNormal, x, y)
+				// TODO: Create zombie when Creature system is implemented
+				// zombie := enemies.NewZombie(spawned, enemies.ZombieNormal, x, y)
 				spawned++
 			}
 		}
@@ -335,29 +335,9 @@ func (r *RandomlandDimension) GetSpawnPosition() (float64, float64) {
 
 // Update updates the dimension (zombies, etc.)
 func (r *RandomlandDimension) Update(playerX, playerY float64, deltaTime float64) {
-	// Create collision function for zombies
-	collisionFunc := func(minX, minY, maxX, maxY float64) bool {
-		nearbyHexagons := r.World.GetNearbyHexagons((minX+maxX)/2, (minY+maxY)/2, 100)
-		for _, hex := range nearbyHexagons {
-			if hex == nil {
-				continue
-			}
-			// Simple AABB collision check
-			if hex.X > minX && hex.X < maxX && hex.Y > minY && hex.Y < maxY {
-				if hex.BlockType != blocks.AIR {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	// Find spawn function
-	spawnFunc := func(x, y float64) (float64, float64) {
-		return r.World.FindSpawnPosition(x, y)
-	}
-
-	// Update zombies (ambient light = 0.5 for randomland - always dim)
+	// TODO: Update zombies when Creature system is implemented
+	// collisionFunc and spawnFunc will be used for creature movement
+	_ = r.World.GetNearbyHexagons // Prevent unused import warning
 }
 
 // IsNearReturnPortal checks if a position is near the return portal

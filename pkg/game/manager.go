@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"image/color"
 	"log"
 	"time"
@@ -15,10 +16,10 @@ import (
 	"github.com/tesselstudio/TesselBox-mobile/pkg/health"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/input"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/network"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/plugins"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/save"
-	"github.com/tesselstudio/TesselBox-mobile/pkg/skin"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/survival"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/ui"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/weather"
@@ -43,9 +44,6 @@ type GameManager struct {
 	PluginManager   *plugins.PluginManager
 	PluginUI        *plugins.PluginUI
 	PluginInstaller *plugins.PluginInstaller
-
-	// Skin
-	SkinEditor *skin.SkinEditor
 
 	// Input
 	InputManager *input.InputManager
@@ -87,7 +85,15 @@ type GameManager struct {
 	DirectionalHitInd *ui.DirectionalHitManager
 	DeathScreen       *ui.DeathScreen
 
+	// Multiplayer UI
+	MultiplayerConnectUI *ui.MultiplayerConnectUI
+
 	// Enemy systems
+
+	// Multiplayer networking
+	NetworkClient *network.ClientNetwork
+	IsMultiplayer bool
+	RemotePlayers map[string]*RemotePlayer
 
 	// Game state
 	SelectedBlock string
@@ -145,6 +151,16 @@ type DroppedItem struct {
 	PickupAt time.Time
 }
 
+// RemotePlayer represents a player connected from another client
+type RemotePlayer struct {
+	ID       string
+	Name     string
+	Position struct {
+		X float64
+		Y float64
+	}
+}
+
 // NewGameManager creates a new game manager with all subsystems initialized
 func NewGameManager(worldName string, worldSeed int64, creativeMode bool, screenWidth, screenHeight int) *GameManager {
 	log.Printf("Initializing GameManager for world '%s'...", worldName)
@@ -165,6 +181,8 @@ func NewGameManager(worldName string, worldSeed int64, creativeMode bool, screen
 		DroppedItems:     make([]*DroppedItem, 0),
 		VertexPool:       make([][]ebiten.Vertex, 10),
 		IndicesPool:      make([][]uint16, 10),
+		IsMultiplayer:    false,
+		RemotePlayers:    make(map[string]*RemotePlayer),
 	}
 
 	// Initialize white image for rendering
@@ -218,9 +236,6 @@ func NewGameManager(worldName string, worldSeed int64, creativeMode bool, screen
 	gm.PluginManager.RegisterPlugin(defaultPlugin)
 	gm.PluginManager.EnablePlugin("default")
 
-	// Initialize skin editor
-	gm.SkinEditor = skin.NewSkinEditor()
-
 	// Initialize save system
 	gm.SaveManager = save.NewSaveManager(worldName, "player")
 
@@ -261,6 +276,9 @@ func NewGameManager(worldName string, worldSeed int64, creativeMode bool, screen
 	gm.DirectionalHitInd = ui.NewDirectionalHitManager()
 	gm.DeathScreen = ui.NewDeathScreen(screenWidth, screenHeight)
 
+	// Initialize multiplayer UI
+	gm.MultiplayerConnectUI = ui.NewMultiplayerConnectUI()
+
 	log.Printf("GameManager initialized successfully")
 	return gm
 }
@@ -297,10 +315,27 @@ func (gm *GameManager) Update(deltaTime float64) error {
 		if gm.PluginUI != nil {
 			return gm.PluginUI.Update()
 		}
-	case ui.StateSkinEditor:
-		return gm.SkinEditor.Update()
 	case ui.StateDeathScreen:
 		return gm.DeathScreen.Update()
+	case ui.StateMultiplayerConnect:
+		if gm.MultiplayerConnectUI != nil {
+			if err := gm.MultiplayerConnectUI.Update(); err != nil {
+				return err
+			}
+			// Check if user pressed connect
+			if gm.MultiplayerConnectUI.IsConnected() {
+				if err := gm.ConnectToServer(
+					gm.MultiplayerConnectUI.GetServerAddr(),
+					gm.MultiplayerConnectUI.GetPlayerName(),
+				); err != nil {
+					gm.MultiplayerConnectUI.SetError(err.Error())
+					gm.MultiplayerConnectUI.Reset()
+				} else {
+					// Connection successful, switch to game state
+					gm.StateManager.SetState(ui.StateGame)
+				}
+			}
+		}
 	case ui.StateGame:
 		// Update game systems
 		gm.Player.Update(deltaTime)
@@ -316,6 +351,10 @@ func (gm *GameManager) Update(deltaTime float64) error {
 		if gm.DirectionalHitInd != nil {
 			gm.DirectionalHitInd.Update()
 		}
+		// Send position updates to server if multiplayer
+		if gm.IsMultiplayer {
+			gm.SendPositionUpdate()
+		}
 	}
 
 	// Update audio system (disabled)
@@ -328,7 +367,130 @@ func (gm *GameManager) Update(deltaTime float64) error {
 // Cleanup cleans up all resources
 func (gm *GameManager) Cleanup() {
 	log.Printf("Cleaning up GameManager...")
+
+	// Disconnect from server if connected
+	if gm.NetworkClient != nil && gm.NetworkClient.IsConnected() {
+		gm.NetworkClient.Disconnect()
+	}
+
 	// Audio disabled
 	// gm.StopBackgroundMusic()
 	// gm.AudioManager.Cleanup()
+}
+
+// ConnectToServer connects to a multiplayer server
+func (gm *GameManager) ConnectToServer(serverAddr, playerName string) error {
+	gm.NetworkClient = network.NewClientNetwork(serverAddr, playerName)
+
+	if err := gm.NetworkClient.Connect(); err != nil {
+		return err
+	}
+
+	gm.IsMultiplayer = true
+
+	// Start packet listener
+	gm.NetworkClient.StartPacketListener(gm.handleServerPacket)
+
+	return nil
+}
+
+// handleServerPacket handles packets from the server
+func (gm *GameManager) handleServerPacket(packet *network.Packet) {
+	switch packet.Type {
+	case network.PacketTypePlayerJoin:
+		var joinPacket network.PlayerJoinPacket
+		if err := json.Unmarshal(packet.Payload, &joinPacket); err != nil {
+			log.Printf("Error unmarshaling player join: %v", err)
+			return
+		}
+		gm.RemotePlayers[joinPacket.PlayerID] = &RemotePlayer{
+			ID:   joinPacket.PlayerID,
+			Name: joinPacket.PlayerName,
+			Position: struct {
+				X float64
+				Y float64
+			}{
+				X: joinPacket.Position.X,
+				Y: joinPacket.Position.Y,
+			},
+		}
+		log.Printf("Remote player joined: %s (%s)", joinPacket.PlayerName, joinPacket.PlayerID)
+
+	case network.PacketTypePlayerLeave:
+		var leavePacket network.PlayerLeavePacket
+		if err := json.Unmarshal(packet.Payload, &leavePacket); err != nil {
+			log.Printf("Error unmarshaling player leave: %v", err)
+			return
+		}
+		delete(gm.RemotePlayers, leavePacket.PlayerID)
+		log.Printf("Remote player left: %s", leavePacket.PlayerID)
+
+	case network.PacketTypePositionUpdate:
+		var posUpdate network.PositionUpdatePacket
+		if err := json.Unmarshal(packet.Payload, &posUpdate); err != nil {
+			log.Printf("Error unmarshaling position update: %v", err)
+			return
+		}
+		if player, exists := gm.RemotePlayers[posUpdate.PlayerID]; exists {
+			player.Position.X = posUpdate.Position.X
+			player.Position.Y = posUpdate.Position.Y
+		}
+
+	case network.PacketTypeBlockUpdate:
+		var blockUpdate network.BlockUpdatePacket
+		if err := json.Unmarshal(packet.Payload, &blockUpdate); err != nil {
+			log.Printf("Error unmarshaling block update: %v", err)
+			return
+		}
+		// Apply block update to world
+		// TODO: Convert pixel coordinates to hex and string to BlockType
+		log.Printf("Block update received: x=%d, y=%d, type=%s", blockUpdate.X, blockUpdate.Y, blockUpdate.BlockType)
+
+	case network.PacketTypeChatMessage:
+		var chatMsg network.ChatMessagePacket
+		if err := json.Unmarshal(packet.Payload, &chatMsg); err != nil {
+			log.Printf("Error unmarshaling chat message: %v", err)
+			return
+		}
+		log.Printf("Chat from %s: %s", chatMsg.PlayerID, chatMsg.Message)
+		// TODO: Display chat in UI
+
+	case network.PacketTypeWorldState:
+		var worldState network.WorldStatePacket
+		if err := json.Unmarshal(packet.Payload, &worldState); err != nil {
+			log.Printf("Error unmarshaling world state: %v", err)
+			return
+		}
+		// Apply world state
+		gm.World.SetSeed(worldState.Seed)
+		log.Printf("Received world state: seed=%d, difficulty=%s", worldState.Seed, worldState.Difficulty)
+	}
+}
+
+// SendPositionUpdate sends the local player's position to the server
+func (gm *GameManager) SendPositionUpdate() {
+	if !gm.IsMultiplayer || gm.NetworkClient == nil {
+		return
+	}
+
+	x, y := gm.Player.GetPosition()
+	gm.NetworkClient.SendPositionUpdate(x, y)
+}
+
+// SendBlockUpdate sends a block change to the server
+func (gm *GameManager) SendBlockUpdate(x, y int, blockType string) {
+	if !gm.IsMultiplayer || gm.NetworkClient == nil {
+		return
+	}
+
+	gm.NetworkClient.SendBlockUpdate(x, y, blockType)
+}
+
+// SendChatMessage sends a chat message to the server
+func (gm *GameManager) SendChatMessage(message string) error {
+	if !gm.IsMultiplayer || gm.NetworkClient == nil {
+		return nil
+	}
+
+	return gm.NetworkClient.SendChatMessage(message)
 }

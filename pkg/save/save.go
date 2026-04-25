@@ -275,23 +275,27 @@ func (sm *SaveManager) SaveGame(gameState *GameState) error {
 		}
 	}
 
-	// Save zombies
-		saveData.Zombies = make([]ZombieData, 0, len(zombies))
-		for _, zombie := range zombies {
-			if zombie.IsAlive {
-				saveData.Zombies = append(saveData.Zombies, ZombieData{
-					ID:        zombie.ID,
-					X:         zombie.X,
-					Y:         zombie.Y,
-					Health:    zombie.Health,
-					MaxHealth: zombie.MaxHealth,
-					Type:      int(zombie.Type),
-					IsAlive:   zombie.IsAlive,
-					State:     int(zombie.State),
-				})
+	// TODO: Save zombies - disabled until Zombie/Creature system is implemented
+	/*
+		if gameState.ZombieManager != nil {
+			zombies := gameState.ZombieManager.GetAllZombies()
+			saveData.Zombies = make([]ZombieData, 0, len(zombies))
+			for _, zombie := range zombies {
+				if zombie.IsAlive {
+					saveData.Zombies = append(saveData.Zombies, ZombieData{
+						ID:        zombie.ID,
+						X:         zombie.X,
+						Y:         zombie.Y,
+						Health:    zombie.Health,
+						MaxHealth: zombie.MaxHealth,
+						Type:      int(zombie.Type),
+						IsAlive:   zombie.IsAlive,
+						State:     int(zombie.State),
+					})
+				}
 			}
 		}
-	}
+	*/
 
 	// Save chests
 	if gameState.ChestManager != nil {
@@ -568,20 +572,21 @@ func (sm *SaveManager) ApplySaveData(saveData *SaveData, gameState *GameState) e
 		gameState.HealthSystem.MaxOverallHealth = totalMax
 	}
 
-	// Load zombies
-		// Clear existing zombies and recreate from save
-		for _, zombieData := range saveData.Zombies {
-			zombie := enemies.NewZombie(
-				enemies.ZombieType(zombieData.Type),
-				zombieData.X,
-				zombieData.Y,
-			)
-			zombie.Health = zombieData.Health
-			zombie.MaxHealth = zombieData.MaxHealth
-			zombie.State = enemies.ZombieState(zombieData.State)
+	// TODO: Load zombies - disabled until Zombie/Creature system is implemented
+	/*
+		if len(saveData.Zombies) > 0 && gameState.ZombieManager != nil {
+			for _, zombieData := range saveData.Zombies {
+				zombie := enemies.NewZombie(
+					enemies.ZombieType(zombieData.Type),
+					zombieData.X,
+					zombieData.Y,
+				)
+				zombie.Health = zombieData.Health
+				zombie.MaxHealth = zombieData.MaxHealth
+				zombie.State = enemies.ZombieState(zombieData.State)
+			}
 		}
-		// Update NextID to avoid ID conflicts
-	}
+	*/
 
 	// Load chests
 	if len(saveData.Chests) > 0 && gameState.ChestManager != nil {

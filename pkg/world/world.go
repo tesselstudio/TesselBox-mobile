@@ -274,23 +274,39 @@ func (w *World) generateChunk(chunk *Chunk) {
 				baseHeight = 400.0
 			}
 
+			// Apply domain warping for organic terrain features (rivers, terrain flow)
+			warpX, warpY := noise.DomainWarp(x, y, 30.0)
+			xWarped := x + warpX
+			yWarped := y + warpY
+
 			// Enhanced multi-layer terrain noise for more realistic terrain
 			// Continental scale features (mountains, valleys)
-			continentalNoise := noise.Noise2D(x*0.001, y*0.001) * 200
+			continentalNoise := noise.Noise2D(xWarped*0.001, yWarped*0.001) * 200
 
-			// Regional scale features (hills, ridges)
-			regionalNoise := noise.Noise2D(x*0.003, y*0.003) * 100
+			// Regional scale features (hills, ridges) - biome-specific weighting
+			regionalWeight := 100.0
+			if biomeType == biomes.MOUNTAINS || biomeType == biomes.VOLCANIC {
+				regionalWeight = 150.0 // More dramatic terrain in mountains
+			} else if biomeType == biomes.OCEAN {
+				regionalWeight = 50.0 // Smoother ocean floor
+			}
+			regionalNoise := noise.Noise2D(xWarped*0.003, yWarped*0.003) * regionalWeight
 
 			// Local scale features (small hills, dunes)
-			localNoise := noise.Noise2D(x*0.01, y*0.01) * 40
+			localNoise := noise.Noise2D(xWarped*0.01, yWarped*0.01) * 40
 
 			// Detail scale features (small variations)
-			detailNoise := noise.Noise2D(x*0.05, y*0.05) * 8
+			detailNoise := noise.FractalNoise(xWarped, yWarped, 3, 0.5) * 8
 
-			// River and valley cutting
-			riverNoise := noise.Noise2D(x*0.015, y*0.015) * 30
+			// River and valley cutting with domain warping for organic flow
+			riverWarpX, riverWarpY := noise.DomainWarp(x*0.5, y*0.5, 100.0)
+			riverNoise := noise.Noise2D((x+riverWarpX)*0.015, (y+riverWarpY)*0.015) * 30
 			if riverNoise < -0.3 {
-				riverNoise *= 2.0 // Deepen valleys
+				riverNoise *= 2.5 // Deepen valleys more aggressively
+				// Carve river channels in flat terrain too
+				if biomeType == biomes.PLAINS || biomeType == biomes.FOREST {
+					riverNoise *= 1.5 // Extra deep in flat biomes
+				}
 			}
 
 			// Combine all noise layers with biome-specific weighting
@@ -360,37 +376,71 @@ func (w *World) generateChunk(chunk *Chunk) {
 				// Use biome ore frequency modifier
 				oreFrequency := biomeProps.OreFrequency
 
-				// Enhanced ore generation with more variety
-				// Use position-based seed for consistent ore generation
-				posSeed := w.Seed + int64(x)*1000 + int64(y)
-				rand.Seed(posSeed)
-				oreChance := rand.Float64()
+				// Enhanced ore generation with 3D noise-based veins
+				// Use 3D noise for volumetric ore vein distribution
+				oreNoise3D := noise.Noise3D(x*0.08, y*0.08, float64(w.Seed)*0.0001)
+				veinNoise3D := noise.Noise3D(x*0.15+100, y*0.15+100, float64(w.Seed)*0.0002)
 
-				// Add vein detection for more realistic ore deposits
-				veinNoise := noise.Noise2D(x*0.1, y*0.1)
-				isVein := veinNoise > 0.7
+				// Base ore chance adjusted by 3D noise
+				oreChance := (oreNoise3D + 1.0) / 2.0 // Normalize to 0-1
+				isVein := veinNoise3D > 0.6
 
 				// Adjust ore chance by biome frequency and vein detection
 				if isVein {
-					// Higher chance in veins
-					oreChance *= 3.0
+					// Higher chance in veins - multiply for richer deposits
+					oreChance = 1.0 - (oreChance * 0.3) // Invert and compress for high values
+				}
+
+				// Apply biome-specific ore distribution multipliers
+				coalMult := 1.0
+				ironMult := 1.0
+				goldMult := 1.0
+				diamondMult := 1.0
+
+				switch biomeType {
+				case biomes.MOUNTAINS:
+					ironMult = 1.5 // More iron in mountains
+					coalMult = 1.3 // More coal too
+				case biomes.DESERT:
+					goldMult = 1.4    // More gold in deserts
+					diamondMult = 0.7 // Less diamonds
+				case biomes.SWAMP:
+					coalMult = 0.6 // Less coal in swamps
+					ironMult = 0.8
+				case biomes.VOLCANIC:
+					ironMult = 2.0    // Lots of iron in volcanic regions
+					goldMult = 1.5    // More gold
+					diamondMult = 0.5 // Fewer diamonds
+				case biomes.OCEAN, biomes.CORAL_REEF:
+					// Default ore distribution underwater
 				}
 
 				// Multiple ore types with realistic depth distribution
-				if depth > 15 && depth < 60 && oreChance < 0.03*oreFrequency {
+				// Coal: shallow, common
+				if depth > 10 && depth < 50 && oreChance < 0.04*oreFrequency*coalMult {
 					blockType = blocks.COAL_ORE
-				} else if depth > 25 && depth < 80 && oreChance < 0.025*oreFrequency {
+					// Iron: medium depth, moderately common
+				} else if depth > 20 && depth < 70 && oreChance < 0.03*oreFrequency*ironMult {
 					blockType = blocks.IRON_ORE
-				} else if depth > 35 && depth < 65 && oreChance < 0.015*oreFrequency {
+					// Gold: medium-deep, less common
+				} else if depth > 30 && depth < 60 && oreChance < 0.018*oreFrequency*goldMult {
 					blockType = blocks.GOLD_ORE
-				} else if depth > 45 && depth < 90 && oreChance < 0.008*oreFrequency {
+					// Diamond: deep, rare
+				} else if depth > 45 && depth < 85 && oreChance < 0.01*oreFrequency*diamondMult {
 					blockType = blocks.DIAMOND_ORE
-				} else if depth > 20 && depth < 55 && oreChance < 0.02*oreFrequency && biomeType == biomes.VOLCANIC {
-					blockType = blocks.OBSIDIAN // Volcanic regions have obsidian
-				} else if depth > 10 && depth < 40 && oreChance < 0.012*oreFrequency {
-					blockType = blocks.GRAVEL // Common stone deposit
-				} else if depth > 5 && depth < 30 && oreChance < 0.01*oreFrequency {
-					blockType = blocks.SANDSTONE // Sedimentary deposits
+					// Obsidian: volcanic regions only
+				} else if depth > 15 && depth < 50 && oreChance < 0.025*oreFrequency && biomeType == biomes.VOLCANIC {
+					blockType = blocks.OBSIDIAN
+					// Gravel: common sedimentary deposit
+				} else if depth > 5 && depth < 35 && oreChance < 0.015*oreFrequency {
+					blockType = blocks.GRAVEL
+					// Sandstone: shallow sedimentary
+				} else if depth > 3 && depth < 25 && oreChance < 0.012*oreFrequency {
+					blockType = blocks.SANDSTONE
+					// Redstone (if available): deep, rare
+				} else if depth > 50 && depth < 100 && oreChance < 0.008*oreFrequency {
+					// Redstone placeholder - currently generates as stone
+					blockType = blocks.STONE
 				} else {
 					blockType = blocks.STONE
 				}
@@ -403,128 +453,149 @@ func (w *World) generateChunk(chunk *Chunk) {
 				}
 			}
 
+			// Cave generation using 3D noise (only for stone/deep blocks, not surface)
+			if blockType != blocks.AIR && blockType != blocks.BEDROCK {
+				// Check if this position should be a cave
+				// Caves only generate below surface and above bedrock
+				if depth > 10 && depth < 250 {
+					caveNoise := noise.Noise3D(x*0.03, y*0.03, float64(w.Seed)*0.001)
+					// Cave threshold - adjust for more/less caves
+					caveThreshold := 0.35
+					// Larger caves at deeper levels
+					if depth > 100 {
+						caveThreshold = 0.45 // More caves deeper down
+					}
+					if caveNoise > caveThreshold {
+						blockType = blocks.AIR // Carve out cave
+					}
+				}
+			}
+
 			// Create hexagon (only if not air)
 			if blockType != blocks.AIR {
 				hexagon := NewHexagon(x, y, HexSize, blockType)
 				chunk.AddHexagon(x, y, hexagon)
 			}
 
-			// Enhanced organism spawning for all biomes
-			if (blockType == blocks.GRASS || blockType == blocks.SAND || blockType == blocks.SNOW || blockType == blocks.ICE) && depth >= -2 && depth <= 2 {
-				// Use position-based seed for consistent organism spawning
-				posSeed := w.Seed + int64(x)*10000 + int64(y)*10000
-				rand.Seed(posSeed)
-				spawnChance := rand.Float64()
+			// TODO: Enhanced organism spawning - disabled until Organism type is defined
+			// This code will be re-enabled when living things are implemented
+			/*
+				if (blockType == blocks.GRASS || blockType == blocks.SAND || blockType == blocks.SNOW || blockType == blocks.ICE) && depth >= -2 && depth <= 2 {
+					// Use position-based seed for consistent organism spawning
+					posSeed := w.Seed + int64(x)*10000 + int64(y)*10000
+					rand.Seed(posSeed)
+					spawnChance := rand.Float64()
 
-				var orgType string
-				var spawnProbability float64
+					var orgType string
+					var spawnProbability float64
 
-				switch biomeType {
-				case biomes.FOREST:
-					if spawnChance < 0.15 {
-						orgType = "tree"
-						spawnProbability = 0.15
-					} else if spawnChance < 0.25 {
-						orgType = "bush"
-						spawnProbability = 0.10
-					} else if spawnChance < 0.35 {
-						orgType = "flower"
-						spawnProbability = 0.10
+					switch biomeType {
+					case biomes.FOREST:
+						if spawnChance < 0.15 {
+							orgType = "tree"
+							spawnProbability = 0.15
+						} else if spawnChance < 0.25 {
+							orgType = "bush"
+							spawnProbability = 0.10
+						} else if spawnChance < 0.35 {
+							orgType = "flower"
+							spawnProbability = 0.10
+						}
+					case biomes.JUNGLE:
+						if spawnChance < 0.25 {
+							orgType = "tree"
+							spawnProbability = 0.25
+						} else if spawnChance < 0.35 {
+							orgType = "bush"
+							spawnProbability = 0.10
+						}
+					case biomes.TAIGA:
+						if spawnChance < 0.12 {
+							orgType = "tree"
+							spawnProbability = 0.12
+						} else if spawnChance < 0.18 {
+							orgType = "bush"
+							spawnProbability = 0.06
+						}
+					case biomes.DESERT:
+						if spawnChance < 0.02 {
+							orgType = "cactus"
+							spawnProbability = 0.02
+						} else if spawnChance < 0.05 {
+							orgType = "dead_bush"
+							spawnProbability = 0.03
+						}
+					case biomes.SAVANNA:
+						if spawnChance < 0.08 {
+							orgType = "tree"
+							spawnProbability = 0.08
+						} else if spawnChance < 0.12 {
+							orgType = "bush"
+							spawnProbability = 0.04
+						}
+					case biomes.TUNDRA:
+						if spawnChance < 0.01 {
+							orgType = "ice_shrub"
+							spawnProbability = 0.01
+						}
+					case biomes.ICE_FIELDS:
+						if spawnChance < 0.005 {
+							orgType = "ice_spike"
+							spawnProbability = 0.005
+						}
+					case biomes.SWAMP:
+						if spawnChance < 0.08 {
+							orgType = "bush"
+							spawnProbability = 0.08
+						} else if spawnChance < 0.12 {
+							orgType = "flower"
+							spawnProbability = 0.04
+						}
+					case biomes.MANGROVE:
+						if spawnChance < 0.10 {
+							orgType = "mangrove_tree"
+							spawnProbability = 0.10
+						}
+					case biomes.CORAL_REEF:
+						if spawnChance < 0.05 {
+							orgType = "coral"
+							spawnProbability = 0.05
+						}
+					case biomes.MOUNTAINS:
+						if spawnChance < 0.03 {
+							orgType = "bush"
+							spawnProbability = 0.03
+						}
+					case biomes.VOLCANIC:
+						if spawnChance < 0.02 {
+							orgType = "lava_rock"
+							spawnProbability = 0.02
+						}
+					default: // PLAINS
+						if spawnChance < 0.05 {
+							orgType = "tree"
+							spawnProbability = 0.05
+						} else if spawnChance < 0.10 {
+							orgType = "bush"
+							spawnProbability = 0.05
+						} else if spawnChance < 0.15 {
+							orgType = "flower"
+							spawnProbability = 0.05
+						}
 					}
-				case biomes.JUNGLE:
-					if spawnChance < 0.25 {
-						orgType = "tree"
-						spawnProbability = 0.25
-					} else if spawnChance < 0.35 {
-						orgType = "bush"
-						spawnProbability = 0.10
-					}
-				case biomes.TAIGA:
-					if spawnChance < 0.12 {
-						orgType = "tree"
-						spawnProbability = 0.12
-					} else if spawnChance < 0.18 {
-						orgType = "bush"
-						spawnProbability = 0.06
-					}
-				case biomes.DESERT:
-					if spawnChance < 0.02 {
-						orgType = "cactus"
-						spawnProbability = 0.02
-					} else if spawnChance < 0.05 {
-						orgType = "dead_bush"
-						spawnProbability = 0.03
-					}
-				case biomes.SAVANNA:
-					if spawnChance < 0.08 {
-						orgType = "tree"
-						spawnProbability = 0.08
-					} else if spawnChance < 0.12 {
-						orgType = "bush"
-						spawnProbability = 0.04
-					}
-				case biomes.TUNDRA:
-					if spawnChance < 0.01 {
-						orgType = "ice_shrub"
-						spawnProbability = 0.01
-					}
-				case biomes.ICE_FIELDS:
-					if spawnChance < 0.005 {
-						orgType = "ice_spike"
-						spawnProbability = 0.005
-					}
-				case biomes.SWAMP:
-					if spawnChance < 0.08 {
-						orgType = "bush"
-						spawnProbability = 0.08
-					} else if spawnChance < 0.12 {
-						orgType = "flower"
-						spawnProbability = 0.04
-					}
-				case biomes.MANGROVE:
-					if spawnChance < 0.10 {
-						orgType = "mangrove_tree"
-						spawnProbability = 0.10
-					}
-				case biomes.CORAL_REEF:
-					if spawnChance < 0.05 {
-						orgType = "coral"
-						spawnProbability = 0.05
-					}
-				case biomes.MOUNTAINS:
-					if spawnChance < 0.03 {
-						orgType = "bush"
-						spawnProbability = 0.03
-					}
-				case biomes.VOLCANIC:
-					if spawnChance < 0.02 {
-						orgType = "lava_rock"
-						spawnProbability = 0.02
-					}
-				default: // PLAINS
-					if spawnChance < 0.05 {
-						orgType = "tree"
-						spawnProbability = 0.05
-					} else if spawnChance < 0.10 {
-						orgType = "bush"
-						spawnProbability = 0.05
-					} else if spawnChance < 0.15 {
-						orgType = "flower"
-						spawnProbability = 0.05
+
+					if spawnChance < spawnProbability {
+						// Convert pixel coordinates to hex coordinates
+						q, r := hexagon.PixelToHex(x, y, HexSize)
+						hexagonCoords := hexagon.HexRound(q, r)
+						orgHex, _ := hexagon.AxialToHex(hexagonCoords.Q, hexagonCoords.R)
+
+						if organism != nil {
+							w.Organisms = append(w.Organisms, organism)
+						}
 					}
 				}
-
-				if spawnChance < spawnProbability {
-					// Convert pixel coordinates to hex coordinates
-					q, r := hexagon.PixelToHex(x, y, HexSize)
-					hexagonCoords := hexagon.HexRound(q, r)
-					orgHex, _ := hexagon.AxialToHex(hexagonCoords.Q, hexagonCoords.R)
-
-					if organism != nil {
-						w.Organisms = append(w.Organisms, organism)
-					}
-				}
-			}
+			*/
 
 			// Spawn trees in appropriate biomes (legacy comment, now handled above)
 			if depth >= -5 && depth <= 5 && biomeType != biomes.OCEAN && biomeType != biomes.DESERT {
@@ -699,17 +770,10 @@ func (w *World) UnloadAllChunks() {
 }
 
 // GetNearbyOrganisms returns organisms within a radius of the given position
-	radiusSq := radius * radius
-
-	for _, org := range w.Organisms {
-		dx := org.X - x
-		dy := org.Y - y
-		if dx*dx+dy*dy <= radiusSq {
-			nearby = append(nearby, org)
-		}
-	}
-
-	return nearby
+// TODO: Implement when Organism type is defined
+func (w *World) GetNearbyOrganisms(x, y, radius float64) []interface{} {
+	// Placeholder - returns empty slice until Organism type is implemented
+	return nil
 }
 
 // GetVisibleBlocks returns all visible blocks based on camera position with frustum culling
@@ -770,15 +834,47 @@ func (w *World) GetVisibleBlocksForLayer(cameraX, cameraY float64, layer int) []
 	return visibleBlocks
 }
 
+// ChunkLoadRequest represents a chunk to be loaded with priority based on distance
+type ChunkLoadRequest struct {
+	ChunkX   int
+	ChunkY   int
+	Distance float64
+}
+
 // GetChunksInRange ensures chunks are generated around the given position
+// Loads closest chunks first for better perceived performance
 func (w *World) GetChunksInRange(x, y float64) {
 	chunkX, chunkY := w.GetChunkCoords(x, y)
 	chunkRadius := RenderDistance
 
+	// Collect chunk load requests
+	requests := make([]ChunkLoadRequest, 0, (chunkRadius*2+1)*(chunkRadius*2+1))
+
 	for dx := -chunkRadius; dx <= chunkRadius; dx++ {
 		for dy := -chunkRadius; dy <= chunkRadius; dy++ {
-			w.GetChunk(chunkX+dx, chunkY+dy)
+			targetX := chunkX + dx
+			targetY := chunkY + dy
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			requests = append(requests, ChunkLoadRequest{
+				ChunkX:   targetX,
+				ChunkY:   targetY,
+				Distance: distance,
+			})
 		}
+	}
+
+	// Sort by distance (closest first) using simple bubble sort for small arrays
+	for i := 0; i < len(requests)-1; i++ {
+		for j := 0; j < len(requests)-i-1; j++ {
+			if requests[j].Distance > requests[j+1].Distance {
+				requests[j], requests[j+1] = requests[j+1], requests[j]
+			}
+		}
+	}
+
+	// Load chunks in priority order
+	for _, req := range requests {
+		w.GetChunk(req.ChunkX, req.ChunkY)
 	}
 }
 
@@ -811,16 +907,11 @@ func (w *World) DamageBlock(hex hexagon.Hexagon, chunkZ int, damage float64) boo
 	}
 	return false
 }
-	toleranceSq := tolerance * tolerance
 
-	for _, org := range w.Organisms {
-		dx := org.X - x
-		dy := org.Y - y
-		if dx*dx+dy*dy <= toleranceSq {
-			return org
-		}
-	}
-
+// GetOrganismAt returns the organism at the given position with tolerance
+// TODO: Implement when Organism type is defined
+func (w *World) GetOrganismAt(x, y, tolerance float64) interface{} {
+	// Placeholder - returns nil until Organism type is implemented
 	return nil
 }
 
@@ -868,78 +959,22 @@ func (w *World) AutoSave(interval time.Duration, stopChan <-chan struct{}) {
 }
 
 // SpawnCreatures spawns creatures in the world based on time of day and location
+// TODO: Implement when Creature type is defined
 func (w *World) SpawnCreatures(dayNightCycle *gametime.DayNightCycle, playerX, playerY float64) {
-	// Only spawn at night or dusk for hostile creatures
-	timeOfDay := dayNightCycle.GetCurrentTimeOfDay()
-	isNightTime := timeOfDay == gametime.Dusk || timeOfDay == gametime.Night || timeOfDay == gametime.Midnight
-
-	// Limit total creatures to prevent overcrowding
-	maxCreatures := 20
-	if len(w.Creatures) >= maxCreatures {
-		return
-	}
-
-	// Spawn area around player
-	spawnRadius := 200.0
-	spawnAttempts := 5
-
-	for i := 0; i < spawnAttempts && len(w.Creatures) < maxCreatures; i++ {
-		// Random position around player
-		angle := rand.Float64() * 2 * math.Pi
-		distance := rand.Float64() * spawnRadius
-		spawnX := playerX + math.Cos(angle)*distance
-		spawnY := playerY + math.Sin(angle)*distance
-
-		// Check if position is valid (not in solid blocks)
-		hex := w.GetHexagonAt(spawnX, spawnY)
-		if hex == nil || hex.BlockType != blocks.AIR {
-			continue // Can't spawn in solid blocks
-		}
-
-		// Determine creature type based on biome and time
-		if isNightTime {
-			// Night spawns
-			switch rand.Intn(3) {
-			case 0:
-			case 1:
-			case 2:
-			}
-		} else {
-			// Day spawns - only passive or less aggressive creatures
-			// For now, only spawn at night
-			continue
-		}
-
-		// Create and add creature
-		// Convert pixel coordinates to hex coordinates
-		q, r := hexagon.PixelToHex(hex.X, hex.Y, HexSize)
-		hexagonCoords := hexagon.HexRound(q, r)
-		creatureHex, _ := hexagon.AxialToHex(hexagonCoords.Q, hexagonCoords.R)
-		w.Creatures = append(w.Creatures, creature)
-	}
+	// Placeholder - creature spawning disabled until Creature type is implemented
+	// This prevents compilation errors while allowing the game to run
 }
 
 // UpdateCreatures updates all creatures in the world
+// TODO: Implement when Creature type is defined
 func (w *World) UpdateCreatures(playerX, playerY float64, deltaTime float64) {
-	// Create isBlocked function for creatures
-	isBlocked := func(x, y float64) bool {
-		hex := w.GetHexagonAt(x, y)
-		return hex != nil && hex.BlockType != blocks.AIR
-	}
-
-	for _, creature := range w.Creatures {
-		creature.Update(playerX, playerY, deltaTime, isBlocked)
-	}
+	// Placeholder - creature updates disabled until Creature type is implemented
 }
 
 // RemoveDeadCreatures removes creatures that have died
+// TODO: Implement when Creature type is defined
 func (w *World) RemoveDeadCreatures() {
-	for _, creature := range w.Creatures {
-		if creature.IsAlive() {
-			aliveCreatures = append(aliveCreatures, creature)
-		}
-	}
-	w.Creatures = aliveCreatures
+	// Placeholder - creature cleanup disabled until Creature type is implemented
 }
 
 // FindSpawnPosition finds a suitable spawn position near the given coordinates
@@ -1009,13 +1044,8 @@ func (w *World) checkPositionForSpawn(x, y float64) (float64, float64) {
 }
 
 // GetCreaturesInArea returns creatures within a certain radius of a point
-	for _, creature := range w.Creatures {
-		dx := creature.X - centerX
-		dy := creature.Y - centerY
-		distance := math.Sqrt(dx*dx + dy*dy)
-		if distance <= radius {
-			nearbyCreatures = append(nearbyCreatures, creature)
-		}
-	}
-	return nearbyCreatures
+// TODO: Implement when Creature type is defined
+func (w *World) GetCreaturesInArea(centerX, centerY, radius float64) []interface{} {
+	// Placeholder - returns empty slice until Creature type is implemented
+	return nil
 }

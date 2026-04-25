@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/tesselstudio/TesselBox-assets"
 	"time"
+
+	assets "github.com/tesselstudio/TesselBox-mobile/pkg/assets"
 
 	"gopkg.in/yaml.v3"
 )
@@ -163,35 +164,40 @@ func (dl *DataLoader) LoadOrganismsConfig() error {
 		return nil
 	}
 
-	if err != nil {
-		return nil
-	}
+	// TODO: Load organisms config when Organism system is implemented
+	// data, err := assets.GetConfigFile("organisms.yaml")
+	// if err != nil {
+	// 	return fmt.Errorf("failed to load organisms config: %v", err)
+	// }
+	//
+	// var organisms map[string]*OrganismConfig
+	// err = yaml.Unmarshal(data, &organisms)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to parse organisms config: %v", err)
+	// }
+	//
+	// // Convert organisms to entity templates
+	// templates := make(map[string]*EntityTemplate)
+	// for organismID, organism := range organisms {
+	// 	template := dl.convertOrganismToTemplate(organismID, organism)
+	// 	templates[organismID] = template
+	// }
+	//
+	// // Load templates into entity manager
+	// templatesData, err := yaml.Marshal(templates)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to marshal organism templates: %v", err)
+	// }
+	//
+	// err = dl.entityManager.LoadTemplates(templatesData)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to load organism templates: %v", err)
+	// }
+	//
+	// dl.loadedConfigs["organisms"] = true
+	// log.Printf("Loaded %d organism templates", len(organisms))
 
-	var organisms map[string]*OrganismConfig
-	err = yaml.Unmarshal(data, &organisms)
-	if err != nil {
-	}
-
-	// Convert organisms to entity templates
-	templates := make(map[string]*EntityTemplate)
-	for organismID, organism := range organisms {
-		template := dl.convertOrganismToTemplate(organismID, organism)
-		templates[organismID] = template
-	}
-
-	// Load templates into entity manager
-	templatesData, err := yaml.Marshal(templates)
-	if err != nil {
-		return fmt.Errorf("failed to marshal organism templates: %v", err)
-	}
-
-	err = dl.entityManager.LoadTemplates(templatesData)
-	if err != nil {
-		return fmt.Errorf("failed to load organism templates: %v", err)
-	}
-
-	dl.loadedConfigs["organisms"] = true
-	log.Printf("Loaded %d organism templates", len(organisms))
+	// Placeholder until organism system is implemented
 	return nil
 }
 

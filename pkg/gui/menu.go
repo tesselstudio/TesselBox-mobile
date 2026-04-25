@@ -36,16 +36,6 @@ type MenuScene struct {
 	soundEnabled    bool
 	graphicsQuality string
 
-	// Skin editor
-	skinColors     []string
-	selectedColor  int
-	skinCanvas     [16][16]color.Color
-	skinBrushColor color.Color
-	skinTool       string
-	customSkins    []CustomSkin
-	selectedSkin   int
-	skinPreview    *ebiten.Image
-
 	// Plugins
 	plugins        []PluginInfo
 	selectedPlugin int
@@ -91,20 +81,12 @@ type WorldSelection struct {
 	ShouldStart bool
 }
 
-// CustomSkin represents a saved custom skin with name and pixel data
-type CustomSkin struct {
-	Name   string
-	Pixels [16][16]color.Color
-}
-
 // NewMenuScene creates a new pixel art menu scene
 func NewMenuScene() *MenuScene {
 	m := &MenuScene{
 		currentScreen:   "main",
 		soundEnabled:    true,
 		graphicsQuality: "medium",
-		skinColors:      []string{"Default", "Red", "Blue", "Green", "Purple"},
-		selectedColor:   0,
 		cursor:          0,
 		fontManager:     NewFontManager(),
 	}
@@ -134,17 +116,6 @@ func NewMenuScene() *MenuScene {
 		{Name: "Debug Tools", Version: "0.5", Enabled: false, Description: "Developer debugging tools"},
 	}
 
-	// Initialize skin editor
-	m.skinBrushColor = ColorPrimary
-	m.skinTool = "brush"
-	m.customSkins = []CustomSkin{
-		{Name: "Default", Pixels: m.createDefaultSkinPixels()},
-		{Name: "Steve", Pixels: m.createSteveSkinPixels()},
-	}
-	m.selectedSkin = 0
-	m.skinCanvas = m.customSkins[0].Pixels
-	m.skinPreview = ebiten.NewImage(64, 64)
-
 	m.setupMainMenu()
 
 	return m
@@ -165,8 +136,6 @@ func (m *MenuScene) setupMainMenu() {
 		m.setupCreateWorldScreen()
 	case "settings":
 		m.setupSettingsScreen()
-	case "skin_editor":
-		m.setupSkinEditorScreen()
 	case "plugins":
 		m.setupPluginsScreen()
 	case "account":
@@ -176,7 +145,7 @@ func (m *MenuScene) setupMainMenu() {
 
 // setupMainScreen creates the main menu buttons
 func (m *MenuScene) setupMainScreen() {
-	menuItems := []string{"Play", "Create New World", "Skin Editor", "Plugin Manager", "Settings", "Account", "Exit"}
+	menuItems := []string{"Play", "Create New World", "Plugin Manager", "Settings", "Account", "Exit"}
 	centerX := 400.0
 	startY := 220.0
 
@@ -302,119 +271,6 @@ func (m *MenuScene) setupSettingsScreen() {
 
 	// Back button
 	backBtn := NewPixelButton(centerX-100, startY+160, 200, 45, "Back", func() {
-		m.currentScreen = "main"
-		m.cursor = 0
-		m.setupMainMenu()
-	})
-	m.buttons = append(m.buttons, backBtn)
-}
-
-// setupSkinEditorScreen creates the skin editor drawing board screen
-func (m *MenuScene) setupSkinEditorScreen() {
-	// Main drawing canvas panel (left side)
-	canvasPanel := NewPixelPanel(50, 80, 320, 320, "")
-	m.panels = append(m.panels, canvasPanel)
-
-	// Tools and colors panel (right side)
-	toolsPanel := NewPixelPanel(400, 80, 350, 400, "")
-	m.panels = append(m.panels, toolsPanel)
-
-	// Tool selection buttons
-	toolY := 100.0
-	brushBtn := NewPixelButton(420, toolY, 100, 35, "Brush", func() {
-		m.skinTool = "brush"
-		m.setupMainMenu()
-	})
-	if m.skinTool == "brush" {
-		brushBtn.BgColor = ColorHighlight
-	}
-	m.buttons = append(m.buttons, brushBtn)
-
-	eraserBtn := NewPixelButton(530, toolY, 100, 35, "Eraser", func() {
-		m.skinTool = "eraser"
-		m.setupMainMenu()
-	})
-	if m.skinTool == "eraser" {
-		eraserBtn.BgColor = ColorHighlight
-	}
-	m.buttons = append(m.buttons, eraserBtn)
-
-	fillBtn := NewPixelButton(640, toolY, 100, 35, "Fill", func() {
-		m.skinTool = "fill"
-		m.setupMainMenu()
-	})
-	if m.skinTool == "fill" {
-		fillBtn.BgColor = ColorHighlight
-	}
-	m.buttons = append(m.buttons, fillBtn)
-
-	// Color palette
-	colors := []color.Color{
-		ColorPrimary,                   // Green
-		color.RGBA{255, 0, 0, 255},     // Red
-		color.RGBA{0, 0, 255, 255},     // Blue
-		color.RGBA{255, 255, 0, 255},   // Yellow
-		color.RGBA{255, 165, 0, 255},   // Orange
-		color.RGBA{128, 0, 128, 255},   // Purple
-		color.RGBA{0, 0, 0, 255},       // Black
-		color.RGBA{255, 255, 255, 255}, // White
-	}
-	colorY := 150.0
-	for i, c := range colors {
-		col := c // capture for closure
-		x := 420 + float64(i%4)*80
-		y := colorY + float64(i/4)*45
-		btn := NewPixelButton(x, y, 70, 35, "", func() {
-			m.skinBrushColor = col
-			m.setupMainMenu()
-		})
-		btn.BgColor = c
-		m.buttons = append(m.buttons, btn)
-	}
-
-	// Skin slot buttons (custom skins)
-	skinY := 260.0
-	for i := 0; i < 4; i++ {
-		idx := i
-		var label string
-		if idx < len(m.customSkins) {
-			label = m.customSkins[idx].Name
-		} else {
-			label = fmt.Sprintf("Slot %d", idx+1)
-		}
-		skinBtn := NewPixelButton(420, skinY+float64(i)*45, 150, 35, label, func() {
-			if idx < len(m.customSkins) {
-				// Load existing skin
-				m.selectedSkin = idx
-				m.skinCanvas = m.customSkins[idx].Pixels
-			}
-		})
-		if i == m.selectedSkin {
-			skinBtn.BgColor = ColorHighlight
-		}
-		m.buttons = append(m.buttons, skinBtn)
-	}
-
-	// Save skin button
-	saveBtn := NewPixelButton(580, skinY, 150, 35, "Save Skin", func() {
-		m.saveCurrentSkin()
-	})
-	m.buttons = append(m.buttons, saveBtn)
-
-	// New skin button
-	newBtn := NewPixelButton(580, skinY+45, 150, 35, "New Skin", func() {
-		m.createNewSkin()
-	})
-	m.buttons = append(m.buttons, newBtn)
-
-	// Clear canvas button
-	clearBtn := NewPixelButton(580, skinY+90, 150, 35, "Clear", func() {
-		m.clearSkinCanvas()
-	})
-	m.buttons = append(m.buttons, clearBtn)
-
-	// Back button
-	backBtn := NewPixelButton(400, 500, 200, 45, "Back", func() {
 		m.currentScreen = "main"
 		m.cursor = 0
 		m.setupMainMenu()
@@ -697,16 +553,13 @@ func (m *MenuScene) handleMainMenuSelection(index int) {
 		m.newWorldSeed = ""
 		m.cursorField = 0
 		m.setupMainMenu()
-	case 2: // Skin Editor
-		m.currentScreen = "skin_editor"
-		m.setupMainMenu()
-	case 3: // Plugin Manager
+	case 2: // Plugin Manager
 		m.currentScreen = "plugins"
 		m.setupMainMenu()
-	case 4: // Settings
+	case 3: // Settings
 		m.currentScreen = "settings"
 		m.setupMainMenu()
-	case 5: // Account
+	case 4: // Account
 		m.currentScreen = "account"
 		m.passwordInput = ""
 		m.confirmPassword = ""
@@ -719,7 +572,7 @@ func (m *MenuScene) handleMainMenuSelection(index int) {
 		// Load GitHub OAuth status
 		m.loadGitHubStatus()
 		m.setupMainMenu()
-	case 6: // Exit
+	case 5: // Exit
 		m.shouldExit = true
 	}
 }
@@ -980,70 +833,6 @@ func (m *MenuScene) GetWorldSelection() WorldSelection {
 // GetTesselboxDir returns the storage directory
 func getTesselboxDir() string {
 	return config.GetTesselboxDir()
-}
-
-// createDefaultSkinPixels creates a default green character skin
-func (m *MenuScene) createDefaultSkinPixels() [16][16]color.Color {
-	var pixels [16][16]color.Color
-	for y := 0; y < 16; y++ {
-		for x := 0; x < 16; x++ {
-			pixels[y][x] = color.RGBA{34, 139, 34, 255} // Forest green
-		}
-	}
-	return pixels
-}
-
-// createSteveSkinPixels creates a Steve-like skin with face and body
-func (m *MenuScene) createSteveSkinPixels() [16][16]color.Color {
-	var pixels [16][16]color.Color
-	// Skin color (face/hands)
-	skinColor := color.RGBA{255, 224, 189, 255}
-	// Shirt color (blue)
-	shirtColor := color.RGBA{65, 105, 225, 255}
-	// Pants color (dark blue)
-	pantsColor := color.RGBA{25, 25, 112, 255}
-
-	for y := 0; y < 16; y++ {
-		for x := 0; x < 16; x++ {
-			switch {
-			case y < 4: // Head/face
-				pixels[y][x] = skinColor
-			case y < 10: // Shirt/body
-				pixels[y][x] = shirtColor
-			default: // Pants/legs
-				pixels[y][x] = pantsColor
-			}
-		}
-	}
-	return pixels
-}
-
-// saveCurrentSkin saves the current canvas to custom skins
-func (m *MenuScene) saveCurrentSkin() {
-	if m.selectedSkin < len(m.customSkins) {
-		m.customSkins[m.selectedSkin].Pixels = m.skinCanvas
-	}
-}
-
-// createNewSkin creates a new empty custom skin
-func (m *MenuScene) createNewSkin() {
-	newSkin := CustomSkin{
-		Name:   fmt.Sprintf("Skin %d", len(m.customSkins)+1),
-		Pixels: m.createDefaultSkinPixels(),
-	}
-	m.customSkins = append(m.customSkins, newSkin)
-	m.selectedSkin = len(m.customSkins) - 1
-	m.skinCanvas = newSkin.Pixels
-	m.setupMainMenu()
-}
-
-// clearSkinCanvas clears the current skin canvas
-func (m *MenuScene) clearSkinCanvas() {
-	for y := 0; y < 16; y++ {
-		for x := 0; x < 16; x++ {
-			m.skinCanvas[y][x] = color.RGBA{255, 255, 255, 255} // White
-		}
-	}
 }
 
 // drawPixelTitle draws a large pixel-art style title using blocks

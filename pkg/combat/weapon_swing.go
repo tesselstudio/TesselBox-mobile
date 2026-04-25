@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/rand"
 	"time"
-
 )
 
 // WeaponSwing represents an active weapon swing attack
@@ -183,7 +182,8 @@ func calculateCrit(baseDamage, zombieHealth float64, isHeadshot bool) (float64, 
 }
 
 // PerformAttack executes an attack and returns results for all hit targets
-func (ws *WeaponSystem) PerformAttack(playerX, playerY, targetX, targetY, damage float64, zombies []*enemies.Zombie) []AttackResult {
+// TODO: Re-enable when Creature/Zombie system is implemented
+func (ws *WeaponSystem) PerformAttack(playerX, playerY, targetX, targetY, damage float64, targets []interface{}) []AttackResult {
 	results := make([]AttackResult, 0)
 
 	// Start the swing
@@ -192,31 +192,8 @@ func (ws *WeaponSystem) PerformAttack(playerX, playerY, targetX, targetY, damage
 		return results
 	}
 
-	// Check hits against all zombies
-	for _, zombie := range zombies {
-		if !zombie.IsAlive {
-			continue
-		}
-
-		if ws.CheckHit(zombie.X, zombie.Y, zombie.Width, zombie.Height) {
-			// Check if headshot (aiming at upper body/head area)
-			targetCenterY := zombie.Y + zombie.Height/2
-			isHeadshot := (targetCenterY - zombie.Y) < zombie.Height/3
-
-			// Calculate critical hit
-			finalDamage, tier, isCrit := calculateCrit(damage, zombie.Health, isHeadshot)
-
-			result := AttackResult{
-				Hit:        true,
-				Damage:     finalDamage,
-				IsCritical: isCrit,
-				Tier:       tier,
-				HitX:       zombie.X + zombie.Width/2,
-				HitY:       zombie.Y + zombie.Height/2,
-			}
-			results = append(results, result)
-		}
-	}
+	// TODO: Check hits against targets when Creature system is implemented
+	// Placeholder - no creature combat until Creature type is defined
 
 	return results
 }

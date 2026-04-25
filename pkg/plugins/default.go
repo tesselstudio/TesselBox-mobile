@@ -1,10 +1,7 @@
 package plugins
 
 import (
-	"fmt"
 	"log"
-	"math/rand"
-	"time"
 
 	"github.com/tesselstudio/TesselBox-mobile/pkg/audio"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
@@ -112,35 +109,27 @@ func (dp *DefaultPlugin) GetBlockProperties(blockType blocks.BlockType) (map[str
 }
 
 // GetCreatureTypes returns all available creature types
-	}
+// TODO: Implement when Creature system is defined
+func (dp *DefaultPlugin) GetCreatureTypes() []string {
+	return []string{} // Placeholder
 }
 
 // GetCreatureDefinition returns a specific creature definition
-	// Create a basic creature definition
-	def := &CreatureDefinition{
-		Type:   creatureType,
-		Name:   stringToCreatureName(creatureType),
-		Health: getDefaultCreatureHealth(creatureType),
-		Damage: getDefaultCreatureDamage(creatureType),
-		Speed:  getDefaultCreatureSpeed(creatureType),
-		Color:  getDefaultCreatureColor(creatureType),
-	}
-	return def, true
+// TODO: Implement when Creature system is defined
+func (dp *DefaultPlugin) GetCreatureDefinition(creatureType string) (*CreatureDefinition, bool) {
+	return nil, false // Placeholder
 }
 
 // GetOrganismTypes returns all available organism types
-	}
+// TODO: Implement when Organism system is defined
+func (dp *DefaultPlugin) GetOrganismTypes() []string {
+	return []string{} // Placeholder
 }
 
 // GetOrganismDefinition returns a specific organism definition
-	// Create a basic organism definition
-	def := &OrganismDefinition{
-		Type:   organismType,
-		Name:   stringToOrganismName(organismType),
-		Height: getDefaultOrganismHeight(organismType),
-		Color:  getDefaultOrganismColor(organismType),
-	}
-	return def, true
+// TODO: Implement when Organism system is defined
+func (dp *DefaultPlugin) GetOrganismDefinition(organismType string) (*OrganismDefinition, bool) {
+	return nil, false // Placeholder
 }
 
 // GetAudioTypes returns all available audio types
@@ -200,12 +189,16 @@ func (dp *DefaultPlugin) OnBlockBroken(x, y, z int, blockType blocks.BlockType) 
 }
 
 // OnCreatureSpawn handles creature spawn events
-	log.Printf("Creature spawned: %s", stringToCreatureName(creature.Type))
+// TODO: Implement when Creature system is defined
+func (dp *DefaultPlugin) OnCreatureSpawn(creatureType string, x, y float64) error {
+	// Placeholder until creature system is implemented
 	return nil
 }
 
 // OnCreatureDeath handles creature death events
-	log.Printf("Creature died: %s", stringToCreatureName(creature.Type))
+// TODO: Implement when Creature system is defined
+func (dp *DefaultPlugin) OnCreatureDeath(creatureType string, x, y float64) error {
+	// Placeholder until creature system is implemented
 	return nil
 }
 
@@ -214,47 +207,14 @@ func (dp *DefaultPlugin) OnTick(world *world.World, deltaTime float64) error {
 	return nil
 }
 
-// Private helper methods
+// Private helper methods - TODO: Implement when Creature/Organism systems are defined
 
 func (dp *DefaultPlugin) spawnRandomOrganism(world *world.World) {
-	}
-
-	organismType := organismTypes[rand.Intn(len(organismTypes))]
-
-	// Create a random position
-	x := rand.Intn(100)
-	y := 50
-
-		Type: organismType,
-		X:    float64(x),
-		Y:    float64(y),
-	}
-
-	world.Organisms = append(world.Organisms, organism)
+	// Placeholder - organism spawning disabled until Organism type is implemented
 }
 
 func (dp *DefaultPlugin) spawnRandomCreature(world *world.World) {
-	}
-
-	creatureType := creatureTypes[rand.Intn(len(creatureTypes))]
-
-	// Create a random position
-	x := rand.Intn(100)
-	y := 50
-
-		ID:        fmt.Sprintf("creature_%d", rand.Intn(10000)),
-		Type:      creatureType,
-		X:         float64(x),
-		Y:         float64(y),
-		Health:    getDefaultCreatureHealth(creatureType),
-		MaxHealth: getDefaultCreatureHealth(creatureType),
-		Damage:    getDefaultCreatureDamage(creatureType),
-		Speed:     getDefaultCreatureSpeed(creatureType),
-		IsHostile: isCreatureHostile(creatureType),
-		SpawnTime: time.Now(),
-	}
-
-	world.Creatures = append(world.Creatures, creature)
+	// Placeholder - creature spawning disabled until Creature type is implemented
 }
 
 // Simple helper functions for demonstration
@@ -275,18 +235,14 @@ func stringToBlockName(blockType blocks.BlockType) string {
 	return "Unknown"
 }
 
-	}
-	if name, exists := names[creatureType]; exists {
-		return name
-	}
-	return "Unknown"
+// TODO: Implement when Creature system is defined
+func stringToCreatureName(creatureType string) string {
+	return creatureType // Placeholder
 }
 
-	}
-	if name, exists := names[organismType]; exists {
-		return name
-	}
-	return "Unknown"
+// TODO: Implement when Organism system is defined
+func stringToOrganismName(organismType string) string {
+	return organismType // Placeholder
 }
 
 func stringToAudioName(audioType audio.AudioType) string {
@@ -379,6 +335,11 @@ func isBlockBreakable(blockType blocks.BlockType) bool {
 	return true
 }
 
+// TODO: Implement when Creature system is defined
+func getDefaultCreatureHealth(creatureType string) int {
+	health := map[string]int{
+		"Zombie":   10,
+		"Skeleton": 8,
 	}
 	if h, exists := health[creatureType]; exists {
 		return h
@@ -386,6 +347,11 @@ func isBlockBreakable(blockType blocks.BlockType) bool {
 	return 10
 }
 
+// TODO: Implement when Creature system is defined
+func getDefaultCreatureDamage(creatureType string) int {
+	damage := map[string]int{
+		"Zombie":   2,
+		"Skeleton": 3,
 	}
 	if d, exists := damage[creatureType]; exists {
 		return d
@@ -393,34 +359,16 @@ func isBlockBreakable(blockType blocks.BlockType) bool {
 	return 2
 }
 
+// TODO: Implement when Creature system is defined
+func getDefaultCreatureSpeed(creatureType string) float64 {
+	speed := map[string]float64{
+		"Zombie":   1.0,
+		"Skeleton": 1.2,
 	}
 	if s, exists := speed[creatureType]; exists {
 		return s
 	}
 	return 1.0
-}
-
-	}
-	if color, exists := colors[creatureType]; exists {
-		return color
-	}
-	return "#FFFFFF"
-}
-
-}
-
-	}
-	if h, exists := height[organismType]; exists {
-		return h
-	}
-	return 2.0
-}
-
-	}
-	if color, exists := colors[organismType]; exists {
-		return color
-	}
-	return "#FFFFFF"
 }
 
 func getDefaultAudioVolume(audioType audio.AudioType) float64 {

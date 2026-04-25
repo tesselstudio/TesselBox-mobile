@@ -2,6 +2,7 @@ package audio
 
 import (
 	"log"
+
 	"github.com/tesselstudio/TesselBox-mobile/pkg/biomes"
 )
 
@@ -330,6 +331,18 @@ func (sl *SoundLibrary) PlayWeatherSound(weatherEvent string) {
 		sl.manager.PlaySound(string(SFXWeatherSnow))
 	case "snow_stop":
 		sl.manager.StopSound(string(SFXWeatherSnow))
+	}
+}
+
+// PlayPortalSound plays portal-related sounds
+func (sl *SoundLibrary) PlayPortalSound(action string) {
+	switch action {
+	case "activate":
+		sl.manager.PlaySound(string(SFXPortalActivate))
+	case "travel":
+		sl.manager.PlaySound(string(SFXPortalTravel))
+	case "ambient":
+		sl.manager.PlaySound(string(SFXPortalAmbient))
 	}
 }
 

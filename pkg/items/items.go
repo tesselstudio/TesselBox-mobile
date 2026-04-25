@@ -3,7 +3,7 @@ package items
 import (
 	"image/color"
 
-	"github.com/tesselstudio/TesselBox-assets"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/assets"
 
 	"gopkg.in/yaml.v3"
 )

@@ -219,21 +219,25 @@ func (m *Manager) Save() error {
 		state.ReturnPortalX = m.RandomlandDim.ReturnPortalX
 		state.ReturnPortalY = m.RandomlandDim.ReturnPortalY
 
-		// Save Randomland zombies
-				if zombie.IsAlive {
-					state.RandomlandZombies = append(state.RandomlandZombies, ZombieData{
-						ID:        zombie.ID,
-						X:         zombie.X,
-						Y:         zombie.Y,
-						Health:    zombie.Health,
-						MaxHealth: zombie.MaxHealth,
-						Type:      int(zombie.Type),
-						IsAlive:   zombie.IsAlive,
-						State:     int(zombie.State),
-					})
+		// TODO: Save Randomland zombies - disabled until Zombie system is implemented
+		/*
+			if m.RandomlandDim.World != nil {
+				for _, zombie := range m.RandomlandDim.World.Zombies {
+					if zombie.IsAlive {
+						state.RandomlandZombies = append(state.RandomlandZombies, ZombieData{
+							ID:        zombie.ID,
+							X:         zombie.X,
+							Y:         zombie.Y,
+							Health:    zombie.Health,
+							MaxHealth: zombie.MaxHealth,
+							Type:      int(zombie.Type),
+							IsAlive:   zombie.IsAlive,
+							State:     int(zombie.State),
+						})
+					}
 				}
 			}
-		}
+		*/
 	}
 
 	data, err := json.MarshalIndent(state, "", "  ")
@@ -288,21 +292,24 @@ func (m *Manager) Load() error {
 			fmt.Println("Randomland world loaded successfully")
 		}
 
-		// Restore Randomland zombies
-			for _, zombieData := range state.RandomlandZombies {
-				zombie := enemies.NewZombie(
-					enemies.ZombieType(zombieData.Type),
-					zombieData.X,
-					zombieData.Y,
-				)
-				zombie.ID = zombieData.ID
-				zombie.Health = zombieData.Health
-				zombie.MaxHealth = zombieData.MaxHealth
-				zombie.IsAlive = zombieData.IsAlive
-				zombie.State = enemies.ZombieState(zombieData.State)
+		// TODO: Restore Randomland zombies - disabled until Zombie system is implemented
+		/*
+			if m.RandomlandDim.World != nil {
+				for _, zombieData := range state.RandomlandZombies {
+					zombie := enemies.NewZombie(
+						enemies.ZombieType(zombieData.Type),
+						zombieData.X,
+						zombieData.Y,
+					)
+					zombie.ID = zombieData.ID
+					zombie.Health = zombieData.Health
+					zombie.MaxHealth = zombieData.MaxHealth
+					zombie.IsAlive = zombieData.IsAlive
+					zombie.State = enemies.ZombieState(zombieData.State)
+					m.RandomlandDim.World.Zombies = append(m.RandomlandDim.World.Zombies, zombie)
+				}
 			}
-			// Update NextID to avoid ID conflicts
-		}
+		*/
 	}
 
 	return nil

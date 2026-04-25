@@ -7,7 +7,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/tesselstudio/TesselBox-assets"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/assets"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"gopkg.in/yaml.v3"

@@ -1,0 +1,140 @@
+# TesselBox Item Definitions
+# This file defines all items available in the game
+
+DIRT_BLOCK:
+  name: "Dirt Block"
+  icon_color: [139, 90, 43]
+  description: "A common building material"
+  stack_size: 64
+
+STONE_BLOCK:
+  name: "Stone Block"
+  icon_color: [128, 128, 128]
+  description: "A sturdy building material"
+  stack_size: 64
+
+GRASS_BLOCK:
+  name: "Grass Block"
+  icon_color: [34, 139, 34]
+  description: "Grass-covered dirt block"
+  stack_size: 64
+
+SAND_BLOCK:
+  name: "Sand Block"
+  icon_color: [238, 203, 173]
+  description: "Sandy block found near water"
+  stack_size: 64
+
+WOOD_BLOCK:
+  name: "Wood Block"
+  icon_color: [139, 69, 19]
+  description: "Wooden block from trees"
+  stack_size: 64
+
+LEAVES:
+  name: "Leaves"
+  icon_color: [0, 100, 0]
+  description: "Tree leaves"
+  stack_size: 64
+
+COAL:
+  name: "Coal"
+  icon_color: [54, 54, 54]
+  description: "Fuel source for furnaces"
+  stack_size: 64
+
+IRON_ORE:
+  name: "Iron Ore"
+  icon_color: [183, 183, 183]
+  description: "Raw iron ore"
+  stack_size: 64
+
+GOLD_ORE:
+  name: "Gold Ore"
+  icon_color: [255, 215, 0]
+  description: "Raw gold ore"
+  stack_size: 64
+
+DIAMOND:
+  name: "Diamond"
+  icon_color: [185, 242, 255]
+  description: "Precious gem"
+  stack_size: 64
+
+WORKBENCH:
+  name: "Workbench"
+  icon_color: [139, 69, 19]
+  description: "Crafting station"
+  stack_size: 64
+
+WOODEN_PICKAXE:
+  name: "Wooden Pickaxe"
+  icon_color: [139, 69, 19]
+  description: "Basic mining tool"
+  stack_size: 1
+
+STONE_PICKAXE:
+  name: "Stone Pickaxe"
+  icon_color: [128, 128, 128]
+  description: "Improved mining tool"
+  stack_size: 1
+
+IRON_PICKAXE:
+  name: "Iron Pickaxe"
+  icon_color: [183, 183, 183]
+  description: "Strong mining tool"
+  stack_size: 1
+
+DIAMOND_PICKAXE:
+  name: "Diamond Pickaxe"
+  icon_color: [185, 242, 255]
+  description: "Best mining tool"
+  stack_size: 1
+
+WOODEN_SWORD:
+  name: "Wooden Sword"
+  icon_color: [139, 69, 19]
+  description: "Basic weapon"
+  stack_size: 1
+
+STONE_SWORD:
+  name: "Stone Sword"
+  icon_color: [128, 128, 128]
+  description: "Improved weapon"
+  stack_size: 1
+
+IRON_SWORD:
+  name: "Iron Sword"
+  icon_color: [183, 183, 183]
+  description: "Strong weapon"
+  stack_size: 1
+
+DIAMOND_SWORD:
+  name: "Diamond Sword"
+  icon_color: [185, 242, 255]
+  description: "Best weapon"
+  stack_size: 1
+
+TORCH:
+  name: "Torch"
+  icon_color: [255, 165, 0]
+  description: "Light source"
+  stack_size: 64
+
+APPLE:
+  name: "Apple"
+  icon_color: [255, 0, 0]
+  description: "Food item"
+  stack_size: 64
+
+BREAD:
+  name: "Bread"
+  icon_color: [210, 180, 140]
+  description: "Food item"
+  stack_size: 64
+
+COOKED_MEAT:
+  name: "Cooked Meat"
+  icon_color: [139, 69, 19]
+  description: "Hearty food"
+  stack_size: 64

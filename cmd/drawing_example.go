@@ -300,10 +300,6 @@ func (gw *GameWrapper) Draw(screen *ebiten.Image) {
 			gw.manager.PluginUI.Draw(screen)
 		}
 
-	case ui.StateSkinEditor:
-		// Draw skin editor (full screen)
-		gw.manager.SkinEditor.Draw(screen)
-
 	case ui.StateGame:
 		// Draw main game scene
 		DrawGameScene(screen, gw.manager)

@@ -194,9 +194,47 @@ func (n *SimplexNoise) Noise2D(x, y float64) float64 {
 		n.sineNoise(x*0.1+n.seed, y*0.1+n.seed)*0.25
 }
 
+// Noise3D returns 3D noise value at the given coordinates (for caves/overhangs)
+func (n *SimplexNoise) Noise3D(x, y, z float64) float64 {
+	// 3D sine-based noise for volumetric features
+	return n.sineNoise3D(x*0.02+n.seed, y*0.02+n.seed, z*0.02+n.seed)*0.5 +
+		n.sineNoise3D(x*0.08+n.seed, y*0.08+n.seed, z*0.08+n.seed)*0.3 +
+		n.sineNoise3D(x*0.15+n.seed, y*0.15+n.seed, z*0.15+n.seed)*0.2
+}
+
+// DomainWarp applies domain warping for organic terrain features (rivers, caves)
+func (n *SimplexNoise) DomainWarp(x, y float64, warpStrength float64) (float64, float64) {
+	// Domain warping creates more organic, flowing patterns
+	warpX := n.Noise2D(x*0.5+50, y*0.5+50) * warpStrength
+	warpY := n.Noise2D(x*0.5+150, y*0.5+150) * warpStrength
+	return x + warpX, y + warpY
+}
+
+// FractalNoise returns multi-octave fractal noise for detailed terrain
+func (n *SimplexNoise) FractalNoise(x, y float64, octaves int, persistence float64) float64 {
+	total := 0.0
+	amplitude := 1.0
+	frequency := 1.0
+	maxValue := 0.0
+
+	for i := 0; i < octaves; i++ {
+		total += n.Noise2D(x*frequency, y*frequency) * amplitude
+		maxValue += amplitude
+		amplitude *= persistence
+		frequency *= 2.0
+	}
+
+	return total / maxValue
+}
+
 // sineNoise generates a simple sine-based noise
 func (n *SimplexNoise) sineNoise(x, y float64) float64 {
 	return (math.Sin(x) + math.Cos(y)) / 2.0
+}
+
+// sineNoise3D generates 3D sine-based noise
+func (n *SimplexNoise) sineNoise3D(x, y, z float64) float64 {
+	return (math.Sin(x) + math.Cos(y) + math.Sin(z*1.3)) / 3.0
 }
 
 // GetBiomeAtPosition returns the biome type at given world coordinates

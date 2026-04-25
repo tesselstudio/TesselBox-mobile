@@ -12,6 +12,8 @@ require (
 	github.com/tesselstudio/TesselBox-assets v0.0.0
 )
 
+replace github.com/tesselstudio/TesselBox-assets => ../TesselBox-assets
+
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect

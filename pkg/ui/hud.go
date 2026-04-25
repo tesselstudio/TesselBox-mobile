@@ -4,6 +4,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/tesselstudio/TesselBox-mobile/pkg/equipment"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/gametime"
@@ -38,6 +39,18 @@ type HUD struct {
 
 	// Icon sizes
 	IconSize float64
+
+	// Animation state for smooth bar transitions
+	animatedHealth  float64
+	animatedHunger  float64
+	animatedThirst  float64
+	animatedStamina float64
+	animationSpeed  float64
+
+	// Visual effects
+	pulseEffect     float64
+	warningFlash    float64
+	damageIndicator float64
 }
 
 // NewHUD creates a new HUD instance
@@ -54,10 +67,64 @@ func NewHUD(screenWidth, screenHeight int, sm *survival.SurvivalManager, es *equ
 		BarHeight:  12,
 		BarSpacing: 4,
 		IconSize:   16,
+
+		animationSpeed: 0.1, // Smooth animation speed
 	}
 
 	hud.calculateLayout()
 	return hud
+}
+
+// Update updates HUD animations and effects
+func (h *HUD) Update(deltaTime float64) {
+	// Update pulse effect
+	h.pulseEffect += deltaTime * 2
+	if h.pulseEffect > math.Pi*2 {
+		h.pulseEffect -= math.Pi * 2
+	}
+
+	// Update warning flash
+	if h.warningFlash > 0 {
+		h.warningFlash -= deltaTime
+		if h.warningFlash < 0 {
+			h.warningFlash = 0
+		}
+	}
+
+	// Update damage indicator fade
+	if h.damageIndicator > 0 {
+		h.damageIndicator -= deltaTime
+		if h.damageIndicator < 0 {
+			h.damageIndicator = 0
+		}
+	}
+
+	// Smoothly animate bar values toward target values
+	if h.HealthSystem != nil {
+		targetHealth := h.HealthSystem.GetOverallHealthPercentage()
+		h.animatedHealth += (targetHealth - h.animatedHealth) * h.animationSpeed
+	}
+
+	if h.SurvivalManager != nil {
+		targetHunger := h.SurvivalManager.Hunger / h.SurvivalManager.MaxHunger
+		h.animatedHunger += (targetHunger - h.animatedHunger) * h.animationSpeed
+
+		targetThirst := h.SurvivalManager.Thirst / h.SurvivalManager.MaxThirst
+		h.animatedThirst += (targetThirst - h.animatedThirst) * h.animationSpeed
+
+		targetStamina := h.SurvivalManager.Stamina / h.SurvivalManager.MaxStamina
+		h.animatedStamina += (targetStamina - h.animatedStamina) * h.animationSpeed
+	}
+}
+
+// TriggerDamageFlash triggers a red flash effect when player takes damage
+func (h *HUD) TriggerDamageFlash() {
+	h.damageIndicator = 1.0
+}
+
+// TriggerWarningFlash triggers a warning flash for low stats
+func (h *HUD) TriggerWarningFlash() {
+	h.warningFlash = 1.0
 }
 
 // calculateLayout positions the HUD elements
@@ -98,25 +165,39 @@ func (h *HUD) Draw(screen *ebiten.Image) {
 	h.drawBodyPartHealth(screen)
 }
 
-// drawHealthBar draws the segmented health bar
+// drawHealthBar draws the segmented health bar with animations
 func (h *HUD) drawHealthBar(screen *ebiten.Image) {
-	// Background
+	// Background with damage flash overlay
 	bgColor := color.RGBA{30, 30, 30, 200}
+	if h.damageIndicator > 0 {
+		// Flash red when damaged
+		flashIntensity := uint8(h.damageIndicator * 100)
+		bgColor = color.RGBA{100 + flashIntensity, 30, 30, 200}
+	}
 	ebitenutil.DrawRect(screen, h.HealthBarX, h.HealthBarY, h.BarWidth, h.BarHeight, bgColor)
 
-	// Health fill
+	// Health fill using animated value
 	if h.HealthSystem != nil {
-		healthPct := h.HealthSystem.GetOverallHealthPercentage()
+		healthPct := h.animatedHealth
 		fillWidth := h.BarWidth * healthPct
 
-		// Color based on health level
+		// Color based on health level with pulse effect for critical
 		var fillColor color.RGBA
-		if healthPct > 0.6 {
-			fillColor = color.RGBA{220, 50, 50, 255} // Red
-		} else if healthPct > 0.3 {
+		pulse := uint8(0)
+		if healthPct <= 0.3 {
+			// Critical health - pulse effect
+			pulse = uint8(50 * math.Sin(h.pulseEffect))
+			fillColor = color.RGBA{150 + pulse, 30, 30, 255}
+		} else if healthPct <= 0.6 {
 			fillColor = color.RGBA{220, 100, 50, 255} // Orange-red
 		} else {
-			fillColor = color.RGBA{150, 30, 30, 255} // Dark red (critical)
+			fillColor = color.RGBA{220, 50, 50, 255} // Red
+		}
+
+		// Add warning flash for low health
+		if h.warningFlash > 0 && healthPct <= 0.3 {
+			flash := uint8(h.warningFlash * 155)
+			fillColor = color.RGBA{255, flash, flash, 255}
 		}
 
 		ebitenutil.DrawRect(screen, h.HealthBarX, h.HealthBarY, fillWidth, h.BarHeight, fillColor)
@@ -127,26 +208,29 @@ func (h *HUD) drawHealthBar(screen *ebiten.Image) {
 			x := h.HealthBarX + float64(i)*segmentWidth
 			ebitenutil.DrawRect(screen, x, h.HealthBarY, 1, h.BarHeight, color.RGBA{0, 0, 0, 100})
 		}
-	}
 
-	// Icon
-	h.drawIcon(screen, h.HealthBarX-18, h.HealthBarY, color.RGBA{220, 50, 50, 255}, "HP")
-
-	// Value text
-	if h.HealthSystem != nil {
+		// Draw animated health value text
 		text := fmt.Sprintf("%.0f", h.HealthSystem.OverallHealth)
 		ebitenutil.DebugPrintAt(screen, text, int(h.HealthBarX+h.BarWidth+5), int(h.HealthBarY))
 	}
+
+	// Icon with pulse for critical health
+	iconColor := color.RGBA{220, 50, 50, 255}
+	if h.HealthSystem != nil && h.HealthSystem.GetOverallHealthPercentage() <= 0.3 {
+		pulseAlpha := uint8(200 + 55*math.Sin(h.pulseEffect*2))
+		iconColor = color.RGBA{255, 50, 50, pulseAlpha}
+	}
+	h.drawIcon(screen, h.HealthBarX-18, h.HealthBarY, iconColor, "HP")
 }
 
-// drawHungerBar draws the hunger bar
+// drawHungerBar draws the hunger bar with animations
 func (h *HUD) drawHungerBar(screen *ebiten.Image) {
 	// Background
 	bgColor := color.RGBA{30, 30, 30, 200}
 	ebitenutil.DrawRect(screen, h.HungerBarX, h.HungerBarY, h.BarWidth, h.BarHeight, bgColor)
 
-	// Hunger fill
-	hungerPct := h.SurvivalManager.Hunger / h.SurvivalManager.MaxHunger
+	// Hunger fill using animated value
+	hungerPct := h.animatedHunger
 	fillWidth := h.BarWidth * hungerPct
 
 	// Color based on hunger level (inverse - full is good)
@@ -174,14 +258,14 @@ func (h *HUD) drawHungerBar(screen *ebiten.Image) {
 	}
 }
 
-// drawThirstBar draws the thirst bar
+// drawThirstBar draws the thirst bar with animations
 func (h *HUD) drawThirstBar(screen *ebiten.Image) {
 	// Background
 	bgColor := color.RGBA{30, 30, 30, 200}
 	ebitenutil.DrawRect(screen, h.ThirstBarX, h.ThirstBarY, h.BarWidth, h.BarHeight, bgColor)
 
-	// Thirst fill
-	thirstPct := h.SurvivalManager.Thirst / h.SurvivalManager.MaxThirst
+	// Thirst fill using animated value
+	thirstPct := h.animatedThirst
 	fillWidth := h.BarWidth * thirstPct
 
 	// Color based on thirst level (inverse - full is good)
@@ -209,14 +293,14 @@ func (h *HUD) drawThirstBar(screen *ebiten.Image) {
 	}
 }
 
-// drawStaminaBar draws the stamina bar
+// drawStaminaBar draws the stamina bar with animations
 func (h *HUD) drawStaminaBar(screen *ebiten.Image) {
 	// Background
 	bgColor := color.RGBA{30, 30, 30, 200}
 	ebitenutil.DrawRect(screen, h.StaminaBarX, h.StaminaBarY, h.BarWidth, h.BarHeight, bgColor)
 
-	// Stamina fill
-	staminaPct := h.SurvivalManager.Stamina / h.SurvivalManager.MaxStamina
+	// Stamina fill using animated value
+	staminaPct := h.animatedStamina
 	fillWidth := h.BarWidth * staminaPct
 
 	// Color based on stamina level
@@ -369,8 +453,8 @@ func (h *HUD) drawIcon(screen *ebiten.Image, x, y float64, col color.RGBA, label
 	ebitenutil.DrawRect(screen, x+2, y+2, size-4, size-4, col)
 }
 
-// Update recalculates layout if screen size changed
-func (h *HUD) Update(screenWidth, screenHeight int) {
+// UpdateLayout recalculates layout if screen size changed
+func (h *HUD) UpdateLayout(screenWidth, screenHeight int) {
 	if h.ScreenWidth != screenWidth || h.ScreenHeight != screenHeight {
 		h.ScreenWidth = screenWidth
 		h.ScreenHeight = screenHeight

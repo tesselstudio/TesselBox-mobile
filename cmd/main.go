@@ -16,6 +16,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/tesselstudio/TesselBox-mobile/pkg/audio"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/chest"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/combat"
@@ -33,7 +34,6 @@ import (
 	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/plugins"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/save"
-	"github.com/tesselstudio/TesselBox-mobile/pkg/skin"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/survival"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/ui"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/weather"
@@ -175,7 +175,6 @@ type Game struct {
 	pluginManager   *plugins.PluginManager
 	pluginUI        *plugins.PluginUI
 	pluginInstaller *plugins.PluginInstaller
-	skinEditor      *skin.SkinEditor
 	inputManager    *input.InputManager
 
 	// Save system
@@ -188,19 +187,19 @@ type Game struct {
 	// Weather system
 	weatherSystem *weather.WeatherSystem
 
-	// Audio system (disabled)
-	// audioManager      *audio.AudioManager
-	// soundLibrary      *audio.SoundLibrary
-	// currentMusicTrack string
-	// musicEnabled      bool
+	// Audio system
+	audioManager      *audio.AudioManager
+	soundLibrary      *audio.SoundLibrary
+	currentMusicTrack string
+	musicEnabled      bool
 
 	// Debug/Panic recovery
 	recoveryHandler *debug.RecoveryHandler
 	profiler        *debug.PerformanceProfiler
 
-	// Footstep audio tracking (disabled)
-	// lastFootstepTime time.Time
-	// footstepCooldown time.Duration
+	// Footstep audio tracking
+	lastFootstepTime time.Time
+	footstepCooldown time.Duration
 
 	// Dropped items
 	droppedItems []*DroppedItem
@@ -385,9 +384,6 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	g.pluginManager.RegisterPlugin(defaultPlugin)
 	g.pluginManager.EnablePlugin("default")
 
-	// Initialize skin editor
-	g.skinEditor = skin.NewSkinEditor()
-
 	// Initialize save system with world name
 	g.saveManager = save.NewSaveManager(worldName, "player")
 
@@ -397,10 +393,10 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	// Initialize weather system
 	g.weatherSystem = weather.NewWeatherSystem()
 
-	// Initialize audio system (disabled)
-	// g.audioManager = audio.NewAudioManager()
-	// g.soundLibrary = audio.NewSoundLibrary(g.audioManager)
-	log.Printf("Audio system disabled")
+	// Initialize audio system
+	g.audioManager = audio.NewAudioManager()
+	g.soundLibrary = audio.NewSoundLibrary(g.audioManager)
+	log.Printf("Audio system initialized")
 
 	// Initialize panic recovery handler
 	g.recoveryHandler = debug.NewRecoveryHandler(config.GetTesselboxDir(), func(info debug.PanicInfo) {
@@ -414,39 +410,39 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	// Initialize performance profiler
 	g.profiler = debug.NewPerformanceProfiler()
 
-	// Load audio files with validation (disabled)
-	// log.Printf("Loading audio system...")
-	// loader := audio.NewAudioLoader(g.audioManager)
-	// if err := loader.LoadAllAudio(); err != nil {
-	// 	log.Printf("Warning: Failed to load audio files: %v", err)
-	// 	g.audioManager.Cleanup()
-	// 	if err := loader.LoadPlaceholderSounds(); err != nil {
-	// 		log.Printf("Warning: Failed to load placeholder sounds: %v", err)
-	// 	} else {
-	// 		log.Printf("Loaded placeholder audio sounds")
-	// 	}
-	// } else {
-	// 	log.Printf("Audio system loaded successfully")
-	// }
+	// Load audio files with validation
+	log.Printf("Loading audio system...")
+	loader := audio.NewAudioLoader(g.audioManager)
+	if err := loader.LoadAllAudio(); err != nil {
+		log.Printf("Warning: Failed to load audio files: %v", err)
+		g.audioManager.Cleanup()
+		if err := loader.LoadPlaceholderSounds(); err != nil {
+			log.Printf("Warning: Failed to load placeholder sounds: %v", err)
+		} else {
+			log.Printf("Loaded placeholder audio sounds")
+		}
+	} else {
+		log.Printf("Audio system loaded successfully")
+	}
 
-	// Initialize sound library (disabled)
-	// g.soundLibrary.InitializeDefaultSounds()
+	// Initialize sound library
+	g.soundLibrary.InitializeDefaultSounds()
 
-	// Initialize background music (disabled)
-	// g.musicEnabled = true
-	// g.currentMusicTrack = ""
+	// Initialize background music
+	g.musicEnabled = true
+	g.currentMusicTrack = ""
 
-	// Validate audio system (disabled)
-	// loadedSounds := g.audioManager.GetLoadedSounds()
-	// if len(loadedSounds) == 0 {
-	// 	log.Printf("WARNING: No audio sounds available")
-	// } else {
-	// 	log.Printf("Audio validation passed: %d sounds loaded", len(loadedSounds))
-	// }
+	// Validate audio system
+	loadedSounds := g.audioManager.GetLoadedSounds()
+	if len(loadedSounds) == 0 {
+		log.Printf("WARNING: No audio sounds available")
+	} else {
+		log.Printf("Audio validation passed: %d sounds loaded", len(loadedSounds))
+	}
 
-	// Initialize footstep tracking (disabled)
-	// g.lastFootstepTime = time.Now()
-	// g.footstepCooldown = 400 * time.Millisecond
+	// Initialize footstep tracking
+	g.lastFootstepTime = time.Now()
+	g.footstepCooldown = 400 * time.Millisecond
 
 	// Initialize survival mode systems
 	log.Printf("Initializing survival mode systems...")
@@ -468,77 +464,80 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	g.backpackUI = ui.NewBackpackUI(ScreenWidth, ScreenHeight, g.inventory, g.equipmentSet, g.healthSystem)
 	g.backpackUI.SetSelectedSlot(g.player.GetSelectedSlot())
 
+	// TODO: Create zombie spawner when Creature system is implemented
 	// Create zombie spawner
 
-	// Set up damage callback for zombie attacks
-		// Apply damage to player health system
-		if g.healthSystem != nil {
-			// Determine which body part to damage based on zombie position
-			var targetPart health.BodyPart
-			if zombieY < g.player.Y+20 {
-				targetPart = health.PartHead
-			} else if zombieY > g.player.Y+50 {
-				// Random leg
-				if rand.Float32() < 0.5 {
-					targetPart = health.PartLeftLeg
+	/*
+		// Set up damage callback for zombie attacks
+			// Apply damage to player health system
+			if g.healthSystem != nil {
+				// Determine which body part to damage based on zombie position
+				var targetPart health.BodyPart
+				if zombieY < g.player.Y+20 {
+					targetPart = health.PartHead
+				} else if zombieY > g.player.Y+50 {
+					// Random leg
+					if rand.Float32() < 0.5 {
+						targetPart = health.PartLeftLeg
+					} else {
+						targetPart = health.PartRightLeg
+					}
 				} else {
-					targetPart = health.PartRightLeg
+					// Random arm or torso
+					r := rand.Float32()
+					if r < 0.4 {
+						targetPart = health.PartTorso
+					} else if r < 0.7 {
+						targetPart = health.PartLeftArm
+					} else {
+						targetPart = health.PartRightArm
+					}
 				}
-			} else {
-				// Random arm or torso
-				r := rand.Float32()
-				if r < 0.4 {
-					targetPart = health.PartTorso
-				} else if r < 0.7 {
-					targetPart = health.PartLeftArm
+				g.healthSystem.DamageBodyPart(targetPart, damage, health.DamagePhysical)
+			}
+
+			// Also apply damage to simple health for backward compatibility
+			if g.player != nil {
+				g.player.TakeDamage(damage)
+			}
+
+			// Trigger screen flash
+			if g.screenFlash != nil {
+				g.screenFlash.Trigger(color.RGBA{255, 0, 0, 100}, 500*time.Millisecond)
+			}
+
+			// Determine damage tier based on damage amount
+			var tier ui.DamageTier
+			isCritical := false
+			switch {
+			case damage >= 15:
+				tier = ui.TierPurple // Fatal
+				isCritical = true
+			case damage >= 10:
+				tier = ui.TierRed // Severe
+				isCritical = true
+			case damage >= 5:
+				tier = ui.TierYellow // Moderate
+			default:
+				tier = ui.TierGreen // Low
+			}
+
+			// Spawn damage indicator
+			if g.damageIndicators != nil {
+				g.damageIndicators.SpawnDamageIndicator(g.player.X, g.player.Y, damage, tier, isCritical)
+			}
+
+			// Trigger directional hit indicator
+			if g.directionalHitInd != nil {
+				// Determine direction based on zombie position relative to player
+				if zombieX < g.player.X {
+					g.directionalHitInd.TriggerHit(ui.DirLeft)
 				} else {
-					targetPart = health.PartRightArm
+					g.directionalHitInd.TriggerHit(ui.DirRight)
 				}
 			}
-			g.healthSystem.DamageBodyPart(targetPart, damage, health.DamagePhysical)
 		}
-
-		// Also apply damage to simple health for backward compatibility
-		if g.player != nil {
-			g.player.TakeDamage(damage)
-		}
-
-		// Trigger screen flash
-		if g.screenFlash != nil {
-			g.screenFlash.Trigger(color.RGBA{255, 0, 0, 100}, 500*time.Millisecond)
-		}
-
-		// Determine damage tier based on damage amount
-		var tier ui.DamageTier
-		isCritical := false
-		switch {
-		case damage >= 15:
-			tier = ui.TierPurple // Fatal
-			isCritical = true
-		case damage >= 10:
-			tier = ui.TierRed // Severe
-			isCritical = true
-		case damage >= 5:
-			tier = ui.TierYellow // Moderate
-		default:
-			tier = ui.TierGreen // Low
-		}
-
-		// Spawn damage indicator
-		if g.damageIndicators != nil {
-			g.damageIndicators.SpawnDamageIndicator(g.player.X, g.player.Y, damage, tier, isCritical)
-		}
-
-		// Trigger directional hit indicator
-		if g.directionalHitInd != nil {
-			// Determine direction based on zombie position relative to player
-			if zombieX < g.player.X {
-				g.directionalHitInd.TriggerHit(ui.DirLeft)
-			} else {
-				g.directionalHitInd.TriggerHit(ui.DirRight)
-			}
-		}
-	}
+	*/
 
 	// Add some starter equipment for testing
 	g.equipmentSet.EquipItem(equipment.CreateArmor("Leather Cap", equipment.SlotHelmet, equipment.MaterialLeather, equipment.ArmorLight), equipment.SlotHelmet)
@@ -676,24 +675,6 @@ func (g *Game) Update() error {
 		return nil
 	}
 
-	// Handle skin editor
-	if state == ui.StateSkinEditor {
-		if err := g.skinEditor.Update(); err != nil {
-			log.Printf("Skin editor update error: %v", err)
-		}
-
-		// Handle escape to close skin editor
-		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-			// Auto-save skin before exiting
-			if err := g.skinEditor.SaveSkin(); err != nil {
-				log.Printf("Failed to save skin on exit: %v", err)
-			}
-			g.stateManager.SetState(ui.StateGame)
-			g.playUISound("close")
-		}
-		return nil
-	}
-
 	// Handle death screen
 	if state == ui.StateDeathScreen {
 		if err := g.deathScreen.Update(); err != nil {
@@ -741,37 +722,41 @@ func (g *Game) Update() error {
 		// Get nearby hexagons for collision detection (shared for player and zombies)
 		nearbyHexagons := g.world.GetNearbyHexagons(g.player.X, g.player.Y, 300)
 
-		// Update zombies
-		ambientLight := g.dayNightCycle.AmbientLight
-		// Create collision function for zombies (same as player collision)
-		zombieCollisionFunc := func(minX, minY, maxX, maxY float64) bool {
-			for _, hex := range nearbyHexagons {
-				if hex == nil {
-					continue
+		/*
+			// Update zombies - TODO: Implement when Creature system is defined
+			ambientLight := g.dayNightCycle.AmbientLight
+			// Create collision function for zombies (same as player collision)
+			zombieCollisionFunc := func(minX, minY, maxX, maxY float64) bool {
+				for _, hex := range nearbyHexagons {
+					if hex == nil {
+						continue
+					}
+					blockKey := getBlockKeyFromType(hex.BlockType)
+					def := blocks.BlockDefinitions[blockKey]
+					if def == nil || !def.Solid {
+						continue
+					}
+					hexMinX := hex.X - hex.Size
+					hexMinY := hex.Y - hex.Size
+					hexMaxX := hex.X + hex.Size
+					hexMaxY := hex.Y + hex.Size
+					collision := !(maxX < hexMinX || minX > hexMaxX || maxY < hexMinY || minY > hexMaxY)
+					if collision {
+						return true
+					}
 				}
-				blockKey := getBlockKeyFromType(hex.BlockType)
-				def := blocks.BlockDefinitions[blockKey]
-				if def == nil || !def.Solid {
-					continue
-				}
-				hexMinX := hex.X - hex.Size
-				hexMinY := hex.Y - hex.Size
-				hexMaxX := hex.X + hex.Size
-				hexMaxY := hex.Y + hex.Size
-				collision := !(maxX < hexMinX || minX > hexMaxX || maxY < hexMinY || minY > hexMaxY)
-				if collision {
-					return true
-				}
+				return false
 			}
-			return false
-		}
-		// Use world FindSpawnPosition for zombie spawning (spawn everywhere with terrain)
-		zombieSpawnFunc := func(x, y float64) (float64, float64) {
-			return g.world.FindSpawnPosition(x, y)
-		}
-		// Only update overworld zombies when in overworld (not in Randomland)
-		if g.dimensionManager == nil || !g.dimensionManager.IsInRandomland() {
-		}
+			// Use world FindSpawnPosition for zombie spawning (spawn everywhere with terrain)
+			zombieSpawnFunc := func(x, y float64) (float64, float64) {
+				return g.world.FindSpawnPosition(x, y)
+			}
+			// Only update overworld zombies when in overworld (not in Randomland)
+			if g.dimensionManager == nil || !g.dimensionManager.IsInRandomland() {
+			}
+		*/
+		// Suppress unused variable warning
+		_ = nearbyHexagons
 
 		// Update weather system
 		g.weatherSystem.Update(deltaTime, ScreenWidth, ScreenHeight)
@@ -917,12 +902,6 @@ func (g *Game) handleGameInput() {
 	// Open plugin manager (P key)
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.stateManager.SetState(ui.StatePluginUI)
-		g.playUISound("open")
-	}
-
-	// Open skin editor (S key) - in creative mode
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) && g.CreativeMode && g.stateManager.GetState() != ui.StateSkinEditor {
-		g.stateManager.SetState(ui.StateSkinEditor)
 		g.playUISound("open")
 	}
 
@@ -1893,12 +1872,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	if state == ui.StateSkinEditor {
-		// Draw skin editor (full screen)
-		g.skinEditor.Draw(screen)
-		return
-	}
-
 	if state == ui.StateGame {
 		g.drawGameScene(screen)
 		g.drawUI(screen)
@@ -1962,7 +1935,9 @@ func (g *Game) drawGameScene(screen *ebiten.Image) {
 	// Draw weapon swing effect (only on current layer)
 	g.drawWeaponSwing(screen)
 
-	// Draw zombies (only on current layer)
+	// TODO: Draw zombies when Creature system is implemented
+	// g.drawZombies(screen)
+}
 
 // drawBlocksBatched draws blocks in batches grouped by color for performance optimization
 func (g *Game) drawBlocksBatched(screen *ebiten.Image, blockList []*world.Hexagon) {
@@ -2652,47 +2627,39 @@ func (g *Game) drawPlayer(screen *ebiten.Image) {
 	ebitenutil.DrawRect(screen, float64(nameX-5), float64(nameY-2), float64(len(playerName)*8+10), 14, color.RGBA{0, 0, 0, 150})
 	ebitenutil.DebugPrintAt(screen, playerName, nameX, nameY)
 
-	// Draw player using custom skin renderer
-	if g.skinEditor != nil && g.skinEditor.GetSkinData() != nil {
-		renderer := skin.NewPlayerRenderer(g.skinEditor.GetSkinData())
-		renderer.SetScale(1.0)
-		renderer.Draw(screen, screenX+float64(g.player.Width)/2, screenY+float64(g.player.Height)/2)
-	} else {
-		// Fallback to blocky square player (Minecraft-style)
-		bodyColor := g.colorToRGB(139, 69, 19)   // Brown body
-		headColor := g.colorToRGB(255, 200, 150) // Skin tone head
+	// Draw player as blocky square character (Minecraft-style)
+	bodyColor := g.colorToRGB(139, 69, 19)   // Brown body
+	headColor := g.colorToRGB(255, 200, 150) // Skin tone head
 
-		// Draw bigger square body (50x50)
-		ebitenutil.DrawRect(screen, screenX-5, screenY+10, float64(g.player.Width)+10, float64(g.player.Height)-10, bodyColor)
+	// Draw bigger square body (50x50)
+	ebitenutil.DrawRect(screen, screenX-5, screenY+10, float64(g.player.Width)+10, float64(g.player.Height)-10, bodyColor)
 
-		// Draw square head (25x25) centered on top
-		headSize := 25.0
-		headX := screenX + (float64(g.player.Width)-headSize)/2
-		headY := screenY - 5
-		ebitenutil.DrawRect(screen, headX, headY, headSize, headSize, headColor)
+	// Draw square head (25x25) centered on top
+	headSize := 25.0
+	headX := screenX + (float64(g.player.Width)-headSize)/2
+	headY := screenY - 5
+	ebitenutil.DrawRect(screen, headX, headY, headSize, headSize, headColor)
 
-		// Draw simple blocky arms
-		armWidth := 10.0
-		armHeight := 30.0
-		armColor := g.colorToRGB(139, 69, 19) // Same as body
+	// Draw simple blocky arms
+	armWidth := 10.0
+	armHeight := 30.0
+	armColor := g.colorToRGB(139, 69, 19) // Same as body
 
-		// Left arm
-		ebitenutil.DrawRect(screen, screenX-armWidth-5, screenY+20, armWidth, armHeight, armColor)
-		// Right arm
-		ebitenutil.DrawRect(screen, screenX+float64(g.player.Width)+5, screenY+20, armWidth, armHeight, armColor)
+	// Left arm
+	ebitenutil.DrawRect(screen, screenX-armWidth-5, screenY+20, armWidth, armHeight, armColor)
+	// Right arm
+	ebitenutil.DrawRect(screen, screenX+float64(g.player.Width)+5, screenY+20, armWidth, armHeight, armColor)
 
-		// Draw blocky legs
-		legWidth := 12.0
-		legHeight := 20.0
-		legColor := g.colorToRGB(0, 0, 139) // Blue pants
+	// Draw blocky legs
+	legWidth := 12.0
+	legHeight := 20.0
+	legColor := g.colorToRGB(0, 0, 139) // Blue pants
 
-		// Left leg
-		ebitenutil.DrawRect(screen, screenX+8, screenY+float64(g.player.Height)-legHeight, legWidth, legHeight, legColor)
-		// Right leg
-		ebitenutil.DrawRect(screen, screenX+float64(g.player.Width)-legWidth-8, screenY+float64(g.player.Height)-legHeight, legWidth, legHeight, legColor)
-	}
+	// Left leg
+	ebitenutil.DrawRect(screen, screenX+8, screenY+float64(g.player.Height)-legHeight, legWidth, legHeight, legColor)
+	// Right leg
+	ebitenutil.DrawRect(screen, screenX+float64(g.player.Width)-legWidth-8, screenY+float64(g.player.Height)-legHeight, legWidth, legHeight, legColor)
 }
-
 
 // drawWeaponSwing draws the weapon swing effect
 func (g *Game) drawWeaponSwing(screen *ebiten.Image) {
@@ -2736,9 +2703,6 @@ func (g *Game) drawWeaponSwing(screen *ebiten.Image) {
 
 // performWeaponAttack executes a weapon swing attack
 func (g *Game) performWeaponAttack() {
-		return
-	}
-
 	// Get player center position
 	playerX, playerY := g.player.GetCenter()
 
@@ -2756,39 +2720,45 @@ func (g *Game) performWeaponAttack() {
 		}
 	}
 
-	// Perform attack
+	// Perform attack (no targets yet - creature system not implemented)
+	targets := []interface{}{} // Empty targets until Creature system is implemented
+	results := g.weaponSystem.PerformAttack(playerX, playerY, mouseWorldX, mouseWorldY, damage, targets)
+	_ = results // Placeholder until zombie damage is implemented
 
-	// Apply damage to hit zombies and show indicators
-	for _, result := range results {
-		if result.Hit {
-			// Find the zombie that was hit and apply damage
-				if zombie.IsAlive &&
-					math.Abs(zombie.X+zombie.Width/2-result.HitX) < 10 &&
-					math.Abs(zombie.Y+zombie.Height/2-result.HitY) < 10 {
-					// Apply damage
-					zombie.TakeDamage(result.Damage)
+	// TODO: Apply damage to hit zombies when Creature system is implemented
+	/*
+		// Apply damage to hit zombies and show indicators
+		for _, result := range results {
+			if result.Hit {
+				// Find the zombie that was hit and apply damage
+					if zombie.IsAlive &&
+						math.Abs(zombie.X+zombie.Width/2-result.HitX) < 10 &&
+						math.Abs(zombie.Y+zombie.Height/2-result.HitY) < 10 {
+						// Apply damage
+						zombie.TakeDamage(result.Damage)
 
-					// Show damage indicator with appropriate tier color
-					if g.damageIndicators != nil {
-						var tier ui.DamageTier
-						switch result.Tier {
-						case combat.CritTierPurple:
-							tier = ui.TierPurple // Fatal - instant death
-						case combat.CritTierRed:
-							tier = ui.TierRed // Severe damage
-						case combat.CritTierYellow:
-							tier = ui.TierYellow // Moderate damage
-						default:
-							tier = ui.TierGreen // Low damage
+						// Show damage indicator with appropriate tier color
+						if g.damageIndicators != nil {
+							var tier ui.DamageTier
+							switch result.Tier {
+							case combat.CritTierPurple:
+								tier = ui.TierPurple // Fatal - instant death
+							case combat.CritTierRed:
+								tier = ui.TierRed // Severe damage
+							case combat.CritTierYellow:
+								tier = ui.TierYellow // Moderate damage
+							default:
+								tier = ui.TierGreen // Low damage
+							}
+							g.damageIndicators.SpawnDamageIndicator(zombie.X, zombie.Y, result.Damage, tier, result.IsCritical)
 						}
-						g.damageIndicators.SpawnDamageIndicator(zombie.X, zombie.Y, result.Damage, tier, result.IsCritical)
-					}
 
-					break
+						break
+					}
 				}
 			}
 		}
-	}
+	*/
 }
 
 // respawnPlayer respawns the player at a safe location
@@ -3122,39 +3092,55 @@ func (g *Game) getSurfaceTypeAtPlayer() string {
 	}
 }
 
-// playBlockSound plays a sound for block interactions (disabled)
+// playBlockSound plays a sound for block interactions
 func (g *Game) playBlockSound(action string, blockType blocks.BlockType) {
-	// Audio disabled
+	if g.soundLibrary == nil {
+		return
+	}
+	blockKey := getBlockKeyFromType(blockType)
+	g.soundLibrary.PlayBlockSound(action, blockKey)
 }
 
-// playItemSound plays a sound for item interactions (disabled)
+// playItemSound plays a sound for item interactions
 func (g *Game) playItemSound(action string) {
-	// Audio disabled
+	if g.soundLibrary == nil {
+		return
+	}
+	g.soundLibrary.PlayItemSound(action)
 }
 
-// playUISound plays a sound for UI interactions (disabled)
+// playUISound plays a sound for UI interactions
 func (g *Game) playUISound(action string) {
-	// Audio disabled
+	if g.soundLibrary == nil {
+		return
+	}
+	g.soundLibrary.PlayUISound(action)
 }
 
-// playCraftingSound plays a sound for crafting interactions (disabled)
+// playCraftingSound plays a sound for crafting interactions
 func (g *Game) playCraftingSound(action string) {
-	// Audio disabled
+	if g.soundLibrary == nil {
+		return
+	}
+	g.soundLibrary.PlayCraftingSound(action)
 }
 
-// playMusic plays background music based on context (disabled)
+// playMusic plays background music based on context
 func (g *Game) playMusic(context string) {
-	// Audio disabled
+	if g.soundLibrary == nil {
+		return
+	}
+	g.soundLibrary.PlayMusic(context)
 }
 
-// updateBackgroundMusic checks and restarts music if it stopped (disabled)
+// updateBackgroundMusic checks and restarts music if it stopped
 func (g *Game) updateBackgroundMusic() {
-	// Audio disabled - no background music
+	// Music management handled by AudioManager
 }
 
-// updateAudioContext updates the audio context based on game state (disabled)
+// updateAudioContext updates the audio context based on game state
 func (g *Game) updateAudioContext() {
-	// Audio disabled - no context updates
+	// Context updates handled by SoundLibrary
 }
 
 // TUI model for Bubble Tea
@@ -3164,7 +3150,7 @@ type model struct {
 	selected      int
 	width         int
 	height        int
-	currentScreen string // "main", "worlds", "settings", "skin_editor", "plugins"
+	currentScreen string // "main", "worlds", "settings", "plugins"
 	shouldExit    bool
 
 	// Settings state
@@ -3177,11 +3163,6 @@ type model struct {
 	selectedWorld int
 	newWorldName  string
 	newWorldSeed  string // Seed as string input (empty = random)
-
-	// Skin editor state
-	skinColors    []string
-	selectedColor int
-	skinName      string
 
 	// Plugin manager state
 	plugins        []PluginInfo
@@ -3210,7 +3191,7 @@ func initialModel() model {
 	}
 
 	return model{
-		choices:         []string{"Play (Select World)", "Create New World", "Skin Editor", "Plugin Manager", "Settings", "Exit"},
+		choices:         []string{"Play (Select World)", "Create New World", "Plugin Manager", "Settings", "Exit"},
 		cursor:          0,
 		selected:        0,
 		width:           80,
@@ -3223,9 +3204,6 @@ func initialModel() model {
 		worldSeeds:      worldSeeds,
 		selectedWorld:   0,
 		newWorldSeed:    "", // Empty = random seed
-		skinColors:      []string{"Default", "Red", "Blue", "Green", "Purple"},
-		selectedColor:   0,
-		skinName:        "Player",
 		plugins: []PluginInfo{
 			{Name: "Minimap", Version: "1.0", Enabled: true, Description: "Shows a minimap"},
 			{Name: "Auto-Save", Version: "2.1", Enabled: true, Description: "Auto-saves every 5 minutes"},
@@ -3265,9 +3243,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if choice == "Create New World" {
 					m.currentScreen = "create_world"
 					m.newWorldName = ""
-					m.cursor = 0
-				} else if choice == "Skin Editor" {
-					m.currentScreen = "skin_editor"
 					m.cursor = 0
 				} else if choice == "Plugin Manager" {
 					m.currentScreen = "plugins"
@@ -3313,8 +3288,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				} else if m.choices[m.cursor] == "Back" {
 					m.currentScreen = "main"
-					m.choices = []string{"Play (Select World)", "Create New World", "Skin Editor", "Plugin Manager", "Settings", "Exit"}
-					m.cursor = 4 // Return to Settings option (now at index 4)
+					m.choices = []string{"Play (Select World)", "Create New World", "Plugin Manager", "Settings", "Exit"}
+					m.cursor = 3 // Return to Settings option (now at index 3)
 				}
 			case "ctrl+c", "q":
 				return m, tea.Quit
@@ -3481,27 +3456,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentScreen = "main"
 				m.cursor = 3
 			}
-		} else if m.currentScreen == "skin_editor" {
-			switch msg.String() {
-			case "up", "k":
-				if m.cursor > 0 {
-					m.cursor--
-				}
-			case "down", "j":
-				if m.cursor < len(m.skinColors) {
-					m.cursor++
-				}
-			case "enter", " ":
-				if m.cursor < len(m.skinColors) {
-					m.selectedColor = m.cursor
-				} else if m.cursor == len(m.skinColors) { // Back
-					m.currentScreen = "main"
-					m.cursor = 2 // Return to Skin Editor option
-				}
-			case "ctrl+c", "q":
-				m.currentScreen = "main"
-				m.cursor = 2
-			}
 		}
 	}
 
@@ -3525,8 +3479,6 @@ func (m model) View() string {
 		title = "\n  \033[1;31mDELETE WORLD\033[0m\n"
 	case "create_world":
 		title = "\n  \033[1;32mCREATE NEW WORLD\033[0m\n"
-	case "skin_editor":
-		title = "\n  \033[1;35mSKIN EDITOR\033[0m\n"
 	case "plugins":
 		title = "\n  \033[1;33mPLUGIN MANAGER\033[0m\n"
 	default:
@@ -3717,43 +3669,6 @@ func (m model) View() string {
 		s.WriteString("\033[38;5;240m" + instr + "\033[0m")
 		s.WriteString("\n")
 
-	case "skin_editor":
-		// Simple skin color selector
-		s.WriteString("\n  Select Skin Color:\n\n")
-
-		colorCodes := map[string]string{
-			"Default": "\033[38;5;226m",
-			"Red":     "\033[38;5;196m",
-			"Blue":    "\033[38;5;51m",
-			"Green":   "\033[38;5;46m",
-			"Purple":  "\033[38;5;165m",
-		}
-
-		for i, color := range m.skinColors {
-			padding := (m.width - len(color) - 8) / 2
-			s.WriteString(strings.Repeat(" ", padding))
-
-			colorCode := colorCodes[color]
-			if m.cursor == i {
-				s.WriteString("\033[1;46m👉 " + colorCode + color + "\033[0m")
-			} else if m.selectedColor == i {
-				s.WriteString("   " + colorCode + color + "\033[0m")
-			} else {
-				s.WriteString("   \033[38;5;250m" + color + "\033[0m")
-			}
-			s.WriteString("\n")
-		}
-
-		// Back option
-		backPadding := (m.width - 6) / 2
-		s.WriteString(strings.Repeat(" ", backPadding))
-		if m.cursor == len(m.skinColors) {
-			s.WriteString("\033[38;5;208;1m👉 Back\033[0m")
-		} else {
-			s.WriteString("\033[38;5;250m   Back\033[0m")
-		}
-		s.WriteString("\n")
-
 	case "plugins":
 		// Plugin list
 		s.WriteString("  Installed Plugins:\n\n")
@@ -3797,7 +3712,7 @@ func (m model) View() string {
 	switch m.currentScreen {
 	case "main":
 		footer = "↑/k: Move    ↓/j: Move    Enter: Select    q/Ctrl+C: Quit"
-	case "worlds", "plugins", "skin_editor":
+	case "worlds", "plugins":
 		footer = "↑/k: Move    ↓/j: Move    Enter: Select    q/Ctrl+C: Back"
 	case "delete_world":
 		footer = "↑/k: Move    ↓/j: Move    Enter: Delete    q: Cancel"
@@ -3945,7 +3860,7 @@ func runGUI() {
 	// Run the main loop - handles both menu and game within single RunGame
 	err := ebiten.RunGame(sceneManager)
 	if err != nil {
-		fmt.Printf("Error running GUI: %v\n", err)
+		log.Printf("Error running GUI: %v", err)
 		os.Exit(1)
 	}
 }
@@ -4127,10 +4042,10 @@ func (g *Game) handlePortalTeleportation() {
 				}
 			}
 
-			// Play portal activation sound (disabled)
-			// if g.audioManager != nil {
-			// 	g.audioManager.PlaySound(string(audio.SFXPortalActivate))
-			// }
+			// Play portal activation sound
+			if g.soundLibrary != nil {
+				g.soundLibrary.PlayPortalSound("activate")
+			}
 
 			// Teleport to Randomland
 			if err := g.dimensionManager.TeleportToRandomland(g.player, progressCallback); err != nil {
@@ -4141,10 +4056,10 @@ func (g *Game) handlePortalTeleportation() {
 				return
 			}
 
-			// Play travel sound and trigger screen flash (disabled)
-			// if g.audioManager != nil {
-			// 	g.audioManager.PlaySound(string(audio.SFXPortalTravel))
-			// }
+			// Play travel sound and trigger screen flash
+			if g.soundLibrary != nil {
+				g.soundLibrary.PlayPortalSound("travel")
+			}
 			if g.screenFlash != nil {
 				g.screenFlash.Trigger(color.RGBA{147, 0, 211, 100}, 300*time.Millisecond) // Purple flash
 			}
@@ -4161,18 +4076,34 @@ func (g *Game) handlePortalTeleportation() {
 	}
 }
 
-// cleanupAudio cleans up audio resources when shutting down (disabled)
+// cleanupAudio cleans up audio resources when shutting down
 func (g *Game) cleanupAudio() {
-	// Audio disabled
+	if g.audioManager != nil {
+		g.audioManager.Cleanup()
+	}
 }
 
 // Main function
 func main() {
+	// Add panic recovery to catch crashes
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("PANIC RECOVERED in main(): %v", r)
+			log.Printf("Stack trace will be logged above")
+		}
+	}()
+
+	// Set up logging for mobile
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.Printf("TesselBox starting...")
+
 	// Initialize storage directory on startup (creates system storage if needed)
 	if err := initTesselboxStorage(); err != nil {
-		fmt.Printf("⚠️ Failed to initialize storage: %v\n", err)
+		log.Printf("⚠️ Failed to initialize storage: %v", err)
+		// Don't exit - try to continue with default paths
 	}
 
 	// Run pixel art GUI
+	log.Printf("Starting GUI...")
 	runGUI()
 }

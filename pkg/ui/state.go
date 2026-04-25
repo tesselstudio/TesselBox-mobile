@@ -12,8 +12,8 @@ const (
 	StateBackpack
 	StateChest
 	StatePluginUI
-	StateSkinEditor
 	StateDeathScreen
+	StateMultiplayerConnect
 )
 
 // StateManager manages game state transitions
@@ -79,10 +79,10 @@ func (s GameState) String() string {
 		return "Chest"
 	case StatePluginUI:
 		return "PluginUI"
-	case StateSkinEditor:
-		return "SkinEditor"
 	case StateDeathScreen:
 		return "DeathScreen"
+	case StateMultiplayerConnect:
+		return "MultiplayerConnect"
 	default:
 		return "Unknown"
 	}

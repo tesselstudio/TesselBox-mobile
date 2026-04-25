@@ -7,26 +7,26 @@ import (
 // Pixel Art Color Palette - Retro Gaming Aesthetic
 var (
 	// Background colors
-	ColorBackground    = color.RGBA{0x1a, 0x1c, 0x2c, 0xff} // Dark blue-black
+	ColorBackground     = color.RGBA{0x1a, 0x1c, 0x2c, 0xff} // Dark blue-black
 	ColorBackgroundDark = color.RGBA{0x10, 0x12, 0x20, 0xff} // Darker shade
-	
+
 	// Primary colors
 	ColorPrimary       = color.RGBA{0x57, 0xff, 0x57, 0xff} // Bright green (selection)
 	ColorPrimaryDark   = color.RGBA{0x3d, 0xb8, 0x3d, 0xff} // Darker green
 	ColorSecondary     = color.RGBA{0xff, 0x8c, 0x42, 0xff} // Orange (accents)
 	ColorSecondaryDark = color.RGBA{0xd4, 0x6a, 0x28, 0xff} // Darker orange
-	
+
 	// Status colors
 	ColorDanger  = color.RGBA{0xff, 0x44, 0x44, 0xff} // Red (delete/warning)
 	ColorWarning = color.RGBA{0xff, 0xaa, 0x00, 0xff} // Amber
 	ColorInfo    = color.RGBA{0x42, 0xa5, 0xff, 0xff} // Blue
 	ColorSuccess = color.RGBA{0x42, 0xff, 0x8c, 0xff} // Mint green
-	
+
 	// Text colors
-	ColorText       = color.RGBA{0xf4, 0xf4, 0xf4, 0xff} // Off-white
-	ColorTextDim    = color.RGBA{0x9c, 0xa3, 0xaf, 0xff} // Gray (inactive)
-	ColorTextDark   = color.RGBA{0x6b, 0x72, 0x80, 0xff} // Dark gray
-	
+	ColorText     = color.RGBA{0xf4, 0xf4, 0xf4, 0xff} // Off-white
+	ColorTextDim  = color.RGBA{0x9c, 0xa3, 0xaf, 0xff} // Gray (inactive)
+	ColorTextDark = color.RGBA{0x6b, 0x72, 0x80, 0xff} // Dark gray
+
 	// UI element colors
 	ColorPanel      = color.RGBA{0x25, 0x28, 0x3d, 0xff} // Panel background
 	ColorPanelLight = color.RGBA{0x35, 0x38, 0x4d, 0xff} // Lighter panel
@@ -38,16 +38,16 @@ var (
 
 // UI Dimensions - Pixel-perfect sizing
 type UIDimensions struct {
-	ButtonWidth      int
-	ButtonHeight     int
-	ButtonPadding    int
-	PanelPadding     int
-	BorderWidth      int
-	CornerRadius     int
-	TextPadding      int
-	LineHeight       int
-	ScrollBarWidth   int
-	IconSize         int
+	ButtonWidth    int
+	ButtonHeight   int
+	ButtonPadding  int
+	PanelPadding   int
+	BorderWidth    int
+	CornerRadius   int
+	TextPadding    int
+	LineHeight     int
+	ScrollBarWidth int
+	IconSize       int
 }
 
 // DefaultDims provides standard pixel art UI dimensions
@@ -82,10 +82,10 @@ var DefaultFontSizes = FontSizes{
 
 // Animation timings
 type AnimationTimings struct {
-	ButtonPress   float64 // Duration of button press animation
-	HoverFade     float64 // Duration of hover highlight fade
+	ButtonPress    float64 // Duration of button press animation
+	HoverFade      float64 // Duration of hover highlight fade
 	MenuTransition float64 // Duration between menu screens
-	CursorBlink   float64 // Cursor blink rate
+	CursorBlink    float64 // Cursor blink rate
 }
 
 // DefaultAnimationTimings provides standard animation speeds
@@ -103,7 +103,6 @@ const (
 	ScreenCreateWorld = "create_world"
 	ScreenDeleteWorld = "delete_world"
 	ScreenSettings    = "settings"
-	ScreenSkinEditor  = "skin_editor"
 	ScreenPlugins     = "plugins"
 )
 

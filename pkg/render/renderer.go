@@ -305,24 +305,24 @@ func (g *Game) Update() error {
 		g.World.UnloadDistantChunks(playerX, playerY)
 	}
 
-	// Handle dead organisms and remove them
-	if g.World != nil {
-		for _, org := range g.World.Organisms {
-			if !org.IsAlive() {
-				// Drop items
-				for _, itemName := range drops {
-					// For now, just print what was dropped (similar to creatures)
-					fmt.Printf("Organism dropped: %s\n", itemName)
+	// TODO: Handle dead organisms - disabled until Organism type is defined
+	/*
+		if g.World != nil {
+			for _, org := range g.World.Organisms {
+				if !org.IsAlive() {
+					// Drop items
+					for _, itemName := range drops {
+						fmt.Printf("Organism dropped: %s\n", itemName)
+					}
+					// Create death particles
+					g.createExplosion(org.X, org.Y, color.RGBA{128, 128, 128, 255})
+				} else {
+					aliveOrganisms = append(aliveOrganisms, org)
 				}
-
-				// Create death particles
-				g.createExplosion(org.X, org.Y, color.RGBA{128, 128, 128, 255})
-			} else {
-				aliveOrganisms = append(aliveOrganisms, org)
 			}
+			g.World.Organisms = aliveOrganisms
 		}
-		g.World.Organisms = aliveOrganisms
-	}
+	*/
 
 	return nil
 }
@@ -375,91 +375,23 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, pX, pY, g.Player.Width, g.Player.Height, Red)
 	}
 
-	// Draw creatures
-	if g.World != nil {
-		for _, creature := range g.World.Creatures {
-			cX := creature.X - g.CameraX
-			cY := creature.Y - g.CameraY
-
-			// Skip if off-screen
-			if cX < -50 || cX > float64(g.ScreenWidth)+50 ||
-				cY < -50 || cY > float64(g.ScreenHeight)+50 {
-				continue
-			}
-
-			// Choose color based on creature type
-			var creatureColor color.RGBA
-			switch creature.Type {
-				creatureColor = color.RGBA{0, 255, 0, 255} // Green
-				creatureColor = color.RGBA{0, 0, 0, 255} // Black
-				creatureColor = color.RGBA{0, 100, 0, 255} // Dark green
-			default:
-				creatureColor = color.RGBA{128, 128, 128, 255} // Gray
-			}
-
-			// Draw creature as a square (zombies same size as player: 50x50)
-			size := 20.0
-				size = 50.0 // Same size as player
-			}
-			ebitenutil.DrawRect(screen, cX-size/2, cY-size/2, size, size, creatureColor)
-
-			// Draw health bar above creature if damaged
-			if creature.Health < creature.MaxHealth {
-				barWidth := size
-				barHeight := 4.0
-				barX := cX - barWidth/2
-				barY := cY - size/2 - 8
-
-				// Background (red)
-				ebitenutil.DrawRect(screen, barX, barY, barWidth, barHeight, color.RGBA{255, 0, 0, 255})
-				// Health (green)
-				healthWidth := barWidth * (creature.Health / creature.MaxHealth)
-				ebitenutil.DrawRect(screen, barX, barY, healthWidth, barHeight, color.RGBA{0, 255, 0, 255})
+	// TODO: Draw creatures - disabled until Creature type is defined
+	/*
+		if g.World != nil {
+			for _, creature := range g.World.Creatures {
+				// Creature drawing logic here
 			}
 		}
-	}
+	*/
 
-	// Draw organisms
-	if g.World != nil {
-		for _, org := range g.World.Organisms {
-			oX := org.X - g.CameraX
-			oY := org.Y - g.CameraY
-
-			// Skip if off-screen
-			if oX < -50 || oX > float64(g.ScreenWidth)+50 ||
-				oY < -50 || oY > float64(g.ScreenHeight)+50 {
-				continue
-			}
-
-			// Choose color based on organism type
-			var orgColor color.RGBA
-			switch org.Type {
-				orgColor = color.RGBA{139, 69, 19, 255} // Brown for tree trunk
-				orgColor = color.RGBA{34, 139, 34, 255} // Forest green for bush
-				orgColor = color.RGBA{255, 0, 255, 255} // Magenta for flower
-			default:
-				orgColor = color.RGBA{128, 128, 128, 255} // Gray
-			}
-
-			// Draw organism as a small rectangle
-			size := 10.0
-			ebitenutil.DrawRect(screen, oX-size/2, oY-size/2, size, size, orgColor)
-
-			// Draw health bar above organism if damaged
-			if org.Health < org.MaxHealth {
-				barWidth := size
-				barHeight := 3.0
-				barX := oX - barWidth/2
-				barY := oY - size/2 - 6
-
-				// Background (red)
-				ebitenutil.DrawRect(screen, barX, barY, barWidth, barHeight, color.RGBA{255, 0, 0, 255})
-				// Health (green)
-				healthWidth := barWidth * (org.Health / org.MaxHealth)
-				ebitenutil.DrawRect(screen, barX, barY, healthWidth, barHeight, color.RGBA{0, 255, 0, 255})
+	// TODO: Draw organisms - disabled until Organism type is defined
+	/*
+		if g.World != nil {
+			for _, org := range g.World.Organisms {
+				// Organism drawing logic here
 			}
 		}
-	}
+	*/
 
 	for _, p := range g.Particles.GetActiveParticles() {
 		drawX := p.X - g.CameraX
@@ -502,7 +434,7 @@ func max(a, b int) int {
 	return b
 }
 
-// drawHexagon draws a hexagonal tile
+// drawHexagon draws a hexagonal tile with LOD support
 func (g *Game) drawHexagon(screen *ebiten.Image, hex *world.Hexagon) {
 	// Calculate screen position
 	screenX := hex.X - g.CameraX
@@ -511,6 +443,23 @@ func (g *Game) drawHexagon(screen *ebiten.Image, hex *world.Hexagon) {
 	// Check if hexagon is on screen
 	if screenX < -100 || screenX > float64(g.ScreenWidth)+100 ||
 		screenY < -100 || screenY > float64(g.ScreenHeight)+100 {
+		return
+	}
+
+	// Calculate distance from screen center for LOD
+	centerX := float64(g.ScreenWidth) / 2
+	centerY := float64(g.ScreenHeight) / 2
+	distFromCenter := (screenX-centerX)*(screenX-centerX) + (screenY-centerY)*(screenY-centerY)
+
+	// LOD thresholds (squared distances for performance)
+	const (
+		lodNearDist = 200000  // ~447 pixels
+		lodMidDist  = 800000  // ~894 pixels
+		lodFarDist  = 1800000 // ~1342 pixels
+	)
+
+	// Skip rendering very distant non-essential blocks (optimization)
+	if distFromCenter > lodFarDist && hex.BlockType != blocks.BEDROCK {
 		return
 	}
 
@@ -565,12 +514,23 @@ func (g *Game) drawHexagon(screen *ebiten.Image, hex *world.Hexagon) {
 		}
 	}
 
-	// Draw filled hexagon using triangles
-	indices := []uint16{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5}
-	screen.DrawTriangles(vertices, indices, g.whiteImage, nil)
-
-	// Hexagon outline can be added later if needed
-	// For now, the filled hexagon is sufficient
+	// LOD rendering: use simplified quads for distant blocks
+	if distFromCenter > lodMidDist {
+		// Mid-to-far: render as simple quad (4 vertices, 2 triangles)
+		size := float32(world.HexSize * 0.8)
+		simpleVerts := []ebiten.Vertex{
+			{DstX: float32(screenX) - size, DstY: float32(screenY) - size, ColorR: vertices[0].ColorR, ColorG: vertices[0].ColorG, ColorB: vertices[0].ColorB, ColorA: vertices[0].ColorA},
+			{DstX: float32(screenX) + size, DstY: float32(screenY) - size, ColorR: vertices[0].ColorR, ColorG: vertices[0].ColorG, ColorB: vertices[0].ColorB, ColorA: vertices[0].ColorA},
+			{DstX: float32(screenX) + size, DstY: float32(screenY) + size, ColorR: vertices[0].ColorR, ColorG: vertices[0].ColorG, ColorB: vertices[0].ColorB, ColorA: vertices[0].ColorA},
+			{DstX: float32(screenX) - size, DstY: float32(screenY) + size, ColorR: vertices[0].ColorR, ColorG: vertices[0].ColorG, ColorB: vertices[0].ColorB, ColorA: vertices[0].ColorA},
+		}
+		simpleIndices := []uint16{0, 1, 2, 0, 2, 3}
+		screen.DrawTriangles(simpleVerts, simpleIndices, g.whiteImage, nil)
+	} else {
+		// Near: full hexagon rendering
+		indices := []uint16{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5}
+		screen.DrawTriangles(vertices, indices, g.whiteImage, nil)
+	}
 }
 
 // checkRectHexCollision checks if a rectangle collides with a hexagon

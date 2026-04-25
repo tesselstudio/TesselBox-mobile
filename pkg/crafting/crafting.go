@@ -2,9 +2,10 @@ package crafting
 
 import (
 	"fmt"
+
 	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 
-	"github.com/tesselstudio/TesselBox-assets"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/assets"
 
 	"gopkg.in/yaml.v3"
 )
