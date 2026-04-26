@@ -737,16 +737,17 @@ type GameState struct {
 
 // AutoSaver handles automatic saving at intervals
 type AutoSaver struct {
-	saveManager *SaveManager
-	gameState   *GameState
-	interval    time.Duration
-	lastSave    time.Time
-	enabled     bool
-	stopChan    chan bool
-	mutex       sync.RWMutex // Fixed: Add mutex for thread safety
+	saveManager  *SaveManager
+	gameState    *GameState
+	getGameState func() *GameState // Callback to get fresh game state dynamically
+	interval     time.Duration
+	lastSave     time.Time
+	enabled      bool
+	stopChan     chan bool
+	mutex        sync.RWMutex // Fixed: Add mutex for thread safety
 }
 
-// NewAutoSaver creates a new auto-saver
+// NewAutoSaver creates a new auto-saver with a static game state
 func NewAutoSaver(saveManager *SaveManager, gameState *GameState, interval time.Duration) *AutoSaver {
 	return &AutoSaver{
 		saveManager: saveManager,
@@ -754,6 +755,17 @@ func NewAutoSaver(saveManager *SaveManager, gameState *GameState, interval time.
 		interval:    interval,
 		enabled:     false,
 		stopChan:    make(chan bool),
+	}
+}
+
+// NewAutoSaverWithCallback creates a new auto-saver with a callback for dynamic game state
+func NewAutoSaverWithCallback(saveManager *SaveManager, getGameState func() *GameState, interval time.Duration) *AutoSaver {
+	return &AutoSaver{
+		saveManager:  saveManager,
+		getGameState: getGameState,
+		interval:     interval,
+		enabled:      false,
+		stopChan:     make(chan bool),
 	}
 }
 
@@ -792,7 +804,16 @@ func (as *AutoSaver) ForceSave() error {
 	defer as.mutex.RUnlock()
 
 	as.lastSave = time.Now()
-	return as.saveManager.SaveGame(as.gameState)
+
+	// Use callback if available, otherwise use static gameState
+	var state *GameState
+	if as.getGameState != nil {
+		state = as.getGameState()
+	} else {
+		state = as.gameState
+	}
+
+	return as.saveManager.SaveGame(state)
 }
 
 // autoSaveLoop runs the auto-save loop

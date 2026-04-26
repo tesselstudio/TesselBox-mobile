@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"image/color"
@@ -16,7 +17,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/tesselstudio/TesselBox-mobile/pkg/achievements"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/audio"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/basebuilding"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/blocks"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/chest"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/combat"
@@ -24,7 +27,11 @@ import (
 	"github.com/tesselstudio/TesselBox-mobile/pkg/crafting"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/debug"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/dimension"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/effects"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/equipment"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/events"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/exploration"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/farming"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/gametime"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/gui"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/health"
@@ -33,8 +40,11 @@ import (
 	"github.com/tesselstudio/TesselBox-mobile/pkg/items"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/player"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/plugins"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/quests"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/save"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/skills"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/survival"
+	"github.com/tesselstudio/TesselBox-mobile/pkg/trading"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/ui"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/weather"
 	"github.com/tesselstudio/TesselBox-mobile/pkg/world"
@@ -281,6 +291,37 @@ type Game struct {
 
 	// Dimension system
 	dimensionManager *dimension.Manager
+
+	// Game Experience Systems (Phase 1-4)
+	// Status Effects
+	effectManager *effects.EffectManager
+	effectUI      *effects.EffectUI
+
+	// Achievements
+	achievementManager *achievements.AchievementManager
+	achievementUI      *achievements.AchievementUI
+
+	// Random Events
+	eventManager *events.EventManager
+	eventUI      *events.EventUI
+
+	// Exploration
+	explorationManager *exploration.ExplorationManager
+
+	// Farming
+	farmingManager *farming.FarmingManager
+
+	// Skills
+	skillManager *skills.SkillManager
+
+	// Quests
+	questManager *quests.QuestManager
+
+	// Trading
+	tradingManager *trading.TradingManager
+
+	// Base Building
+	baseBuildingManager *basebuilding.BaseManager
 }
 
 // NewGame creates a new game with default world
@@ -292,6 +333,17 @@ func NewGame() *Game {
 func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	// Use shared white image singleton for better resource management
 	whiteImage := getSharedWhiteImage()
+
+	// Check for existing world to preserve seed (fix world memory loss)
+	existingSeed := int64(0)
+	if worldSeed == 0 {
+		// Try to load existing world metadata to get the original seed
+		storage := world.NewWorldStorage(worldName)
+		if metadata, err := storage.GetWorldMetadata(); err == nil {
+			existingSeed = metadata.CreatedAt.UnixNano()
+			log.Printf("Found existing world '%s' with seed: %d", worldName, existingSeed)
+		}
+	}
 
 	g := &Game{
 		world:                  world.NewWorld(worldName), // Create world with name
@@ -313,10 +365,13 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 		UnlockedRecipes:        make(map[string]bool),
 	}
 
-	// Set the world seed if provided (non-zero)
+	// Set the world seed - prioritize: 1) provided seed, 2) existing world seed, 3) random
 	if worldSeed != 0 {
 		g.world.SetSeed(worldSeed)
 		log.Printf("World '%s' created with seed: %d", worldName, worldSeed)
+	} else if existingSeed != 0 {
+		g.world.SetSeed(existingSeed)
+		log.Printf("World '%s' loaded with existing seed: %d", worldName, existingSeed)
 	} else {
 		log.Printf("World '%s' created with random seed: %d", worldName, g.world.GetSeed())
 	}
@@ -348,6 +403,16 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 		spawnY = groundY - 200
 	}
 	g.player.SetPosition(spawnX, spawnY)
+
+	// Load existing chunks from storage if world exists (fix world memory loss)
+	if existingSeed != 0 {
+		if err := g.world.LoadWorldArea(spawnX, spawnY, 5); err != nil {
+			log.Printf("Warning: Failed to load existing world chunks: %v", err)
+		} else {
+			log.Printf("Loaded existing world chunks around spawn point")
+		}
+	}
+
 	g.world.GetChunksInRange(spawnX, spawnY)
 	log.Printf("Player spawned at: (%.1f, %.1f) in world '%s'", spawnX, spawnY, worldName)
 
@@ -386,6 +451,11 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 
 	// Initialize save system with world name
 	g.saveManager = save.NewSaveManager(worldName, "player")
+
+	// Initialize auto-saver with callback to get fresh game state every save (30 second interval for frequent saves)
+	g.autoSaver = save.NewAutoSaverWithCallback(g.saveManager, func() *save.GameState {
+		return g.createSaveState()
+	}, 30*time.Second)
 
 	// Initialize day/night cycle
 	g.dayNightCycle = gametime.NewDayNightCycle(600.0)
@@ -593,6 +663,9 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	}
 	log.Printf("Dimension system initialized")
 
+	// Initialize Game Experience Systems (Phase 1-4)
+	g.initializeGameExperienceSystems()
+
 	log.Printf("Survival systems initialized: Equipment slots filled, wings equipped, HUD ready")
 
 	// Start in game mode using StateManager
@@ -602,10 +675,180 @@ func NewGameWithWorld(worldName string, worldSeed int64) *Game {
 	return g
 }
 
+// initializeGameExperienceSystems initializes all Phase 1-4 game experience systems
+func (g *Game) initializeGameExperienceSystems() {
+	log.Printf("Initializing game experience systems...")
+
+	// Phase 1: Status Effects
+	g.effectManager = effects.NewEffectManager()
+	g.effectUI = effects.NewEffectUI(ScreenWidth, ScreenHeight)
+	g.effectManager.SetCallbacks(
+		func(effect *effects.ActiveEffect) { log.Printf("Effect applied: %s", effect.Definition.Name) },
+		func(effect *effects.ActiveEffect) { log.Printf("Effect expired: %s", effect.Definition.Name) },
+		func(effect *effects.ActiveEffect) { log.Printf("Effect refreshed: %s", effect.Definition.Name) },
+	)
+	log.Printf("Status Effects system initialized")
+
+	// Phase 1: Achievements
+	g.achievementManager = achievements.NewAchievementManager()
+	g.achievementUI = achievements.NewAchievementUI(ScreenWidth, ScreenHeight)
+	g.achievementManager.SetCallbacks(
+		func(progress *achievements.AchievementProgress) {
+			log.Printf("Achievement unlocked: %s", progress.Definition.Name)
+			g.achievementUI.QueuePopup(progress)
+		},
+		func(progress *achievements.AchievementProgress) {
+			log.Printf("Achievement progress: %s - %d/%d", progress.Definition.Name, progress.Progress, progress.Definition.MaxProgress)
+		},
+	)
+	log.Printf("Achievements system initialized")
+
+	// Phase 2: Random Events
+	g.eventManager = events.NewEventManager()
+	g.eventUI = events.NewEventUI(ScreenWidth, ScreenHeight)
+	g.eventManager.SetCallbacks(
+		func(event *events.ActiveEvent) { g.eventUI.OnEventStart(event) },
+		func(event *events.ActiveEvent) { g.eventUI.OnEventWarning(event) },
+		func(event *events.ActiveEvent) { g.eventUI.OnEventEnd(event) },
+	)
+	log.Printf("Random Events system initialized")
+
+	// Phase 2: Exploration
+	g.explorationManager = exploration.NewExplorationManager()
+	g.explorationManager.SetCallbacks(
+		func(poi *exploration.PointOfInterest) { log.Printf("Discovered: %s", poi.Name) },
+		func(poi *exploration.PointOfInterest, xp int, rewards []exploration.Reward) {
+			log.Printf("Explored: %s, gained %d XP", poi.Name, xp)
+		},
+	)
+	// Generate some POIs in the world
+	g.explorationManager.GeneratePOIs(2000, 2000, 0, 10)
+	log.Printf("Exploration system initialized with 10 POIs")
+
+	// Phase 2: Farming
+	g.farmingManager = farming.NewFarmingManager()
+	g.farmingManager.SetCallbacks(
+		func(crop *farming.CropInstance) { log.Printf("Crop ready: %s", crop.Definition.Name) },
+		func(crop *farming.CropInstance) { log.Printf("Crop died: %s", crop.Definition.Name) },
+		func(crop *farming.CropInstance, yields []farming.CropYield) {
+			log.Printf("Harvested: %s", crop.Definition.Name)
+		},
+	)
+	log.Printf("Farming system initialized")
+
+	// Phase 3: Skills
+	g.skillManager = skills.NewSkillManager()
+	g.skillManager.SetCallbacks(
+		func(skill *skills.SkillInstance) { log.Printf("Skill unlocked: %s", skill.Definition.Name) },
+		func(tree skills.SkillTree, level int) {
+			log.Printf("Skill tree %s leveled up to %d", tree.String(), level)
+		},
+	)
+	log.Printf("Skills system initialized")
+
+	// Phase 3: Quests
+	g.questManager = quests.NewQuestManager()
+	g.questManager.SetCallbacks(
+		func(quest *quests.QuestInstance) { log.Printf("Quest started: %s", quest.Definition.Name) },
+		func(quest *quests.QuestInstance) {
+			log.Printf("Quest completed: %s! Reward: %d XP, %d Gold", quest.Definition.Name, quest.Definition.Reward.XP, quest.Definition.Reward.Gold)
+			g.skillManager.AddXP(skills.TREE_COMBAT, quest.Definition.Reward.XP)
+		},
+		func(quest *quests.QuestInstance) { log.Printf("Quest failed: %s", quest.Definition.Name) },
+	)
+	log.Printf("Quests system initialized")
+
+	// Phase 4: Trading
+	g.tradingManager = trading.NewTradingManager()
+	log.Printf("Trading system initialized with %d gold", g.tradingManager.GetPlayerGold())
+
+	// Phase 4: Gathering (uses package-level functions, no manager needed)
+	// Resource nodes are generated dynamically during gameplay
+	log.Printf("Gathering system initialized")
+
+	// Phase 4: Base Building
+	g.baseBuildingManager = basebuilding.NewBaseManager()
+	g.baseBuildingManager.SetCallbacks(
+		func(structure *basebuilding.StructureInstance) { log.Printf("Structure built: %s", structure.Def.Name) },
+		func(structure *basebuilding.StructureInstance) {
+			log.Printf("Structure destroyed: %s", structure.Def.Name)
+		},
+	)
+	log.Printf("Base Building system initialized")
+
+	log.Printf("All game experience systems initialized successfully")
+}
+
+// updateGameExperienceSystems updates all Phase 1-4 systems
+func (g *Game) updateGameExperienceSystems(deltaTime float64) {
+	// Phase 1: Status Effects
+	if g.effectManager != nil {
+		g.effectManager.Update(deltaTime)
+	}
+	// Note: effectUI doesn't have Update, only Draw
+
+	// Phase 1: Achievements
+	if g.achievementUI != nil {
+		g.achievementUI.Update(deltaTime)
+	}
+
+	// Phase 2: Random Events
+	if g.eventManager != nil {
+		day := int(g.TotalPlayTime.Hours() / 24)
+		playTime := int(g.TotalPlayTime.Minutes())
+		isSurface := g.currentLayer == 0
+		timeOfDay := "day"
+		if g.dayNightCycle != nil && g.dayNightCycle.AmbientLight < 0.5 {
+			timeOfDay = "night"
+		}
+		g.eventManager.Update(deltaTime, day, playTime, isSurface, timeOfDay)
+	}
+	if g.eventUI != nil {
+		g.eventUI.Update(deltaTime)
+	}
+
+	// Phase 2: Exploration
+	if g.explorationManager != nil && g.player != nil {
+		px, py := g.player.GetCenter()
+		g.explorationManager.Update(px, py, g.currentLayer)
+	}
+
+	// Phase 2: Farming
+	if g.farmingManager != nil {
+		dayTime := 0.0
+		if g.dayNightCycle != nil {
+			dayTime = g.dayNightCycle.AmbientLight
+		}
+		g.farmingManager.Update(deltaTime, dayTime)
+	}
+
+	// Phase 3: Skills (passive - no update needed)
+
+	// Phase 3: Quests
+	if g.questManager != nil {
+		g.questManager.Update(deltaTime)
+	}
+
+	// Phase 4: Trading (passive - no update needed)
+
+	// Phase 4: Base Building (no update needed unless damage over time)
+}
+
 // Update updates the game state
 func (g *Game) Update() error {
 	// Panic recovery - catches crashes and logs them
 	defer g.recoveryHandler.Recover()
+
+	// Handle window closing - save game before exit
+	if ebiten.IsWindowBeingClosed() {
+		log.Println("Window closing - saving game...")
+		if err := g.SaveGame(); err != nil {
+			log.Printf("Failed to save game on exit: %v", err)
+		} else {
+			log.Println("Game saved successfully on exit")
+		}
+		return ebiten.Termination
+	}
 
 	// Update touch input for mobile support
 	if g.inputManager != nil {
@@ -760,6 +1003,9 @@ func (g *Game) Update() error {
 
 		// Update weather system
 		g.weatherSystem.Update(deltaTime, ScreenWidth, ScreenHeight)
+
+		// Update game experience systems
+		g.updateGameExperienceSystems(deltaTime)
 
 		// Update audio system (disabled)
 		// g.audioManager.Update()
@@ -1130,6 +1376,51 @@ func (g *Game) handleGameInput() {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 			g.commandMode = false
 			g.commandString = ""
+		}
+	}
+
+	// Game Experience Systems Hotkeys
+	// L: Toggle Achievements UI
+	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
+		if g.achievementUI != nil {
+			g.achievementUI.Toggle()
+			if g.achievementUI.IsVisible() {
+				log.Printf("Achievements UI opened - %d unlocked", len(g.achievementManager.GetUnlockedAchievements()))
+			}
+		}
+	}
+
+	// J: Show active quests
+	if inpututil.IsKeyJustPressed(ebiten.KeyJ) {
+		if g.questManager != nil {
+			activeQuests := g.questManager.GetActiveQuests()
+			if len(activeQuests) > 0 {
+				log.Printf("Active Quests (%d):", len(activeQuests))
+				for _, q := range activeQuests {
+					log.Printf("  - %s: %.0f%% complete", q.Definition.Name, q.GetProgress())
+				}
+			} else {
+				availableQuests := g.questManager.GetAvailableQuests()
+				if len(availableQuests) > 0 {
+					log.Printf("Available quests: %d (press to accept)", len(availableQuests))
+					// Auto-accept first available quest for demo
+					if len(availableQuests) > 0 {
+						g.questManager.AcceptQuest(availableQuests[0].ID)
+					}
+				}
+			}
+		}
+	}
+
+	// K: Show skill tree info
+	if inpututil.IsKeyJustPressed(ebiten.KeyK) && !ebiten.IsKeyPressed(ebiten.KeyControl) {
+		if g.skillManager != nil {
+			log.Printf("Skill Trees:")
+			for tree := skills.TREE_MINING; tree <= skills.TREE_MOVEMENT; tree++ {
+				level := g.skillManager.GetTreeLevel(tree)
+				xp := g.skillManager.GetTreeXP(tree)
+				log.Printf("  %s: Level %d (%d XP)", tree.String(), level, xp)
+			}
 		}
 	}
 }
@@ -2331,6 +2622,32 @@ func (g *Game) drawUI(screen *ebiten.Image) {
 
 	// Draw portal interaction prompt
 	g.drawPortalPrompt(screen)
+
+	// Draw game experience systems UI
+	g.drawGameExperienceUI(screen)
+}
+
+// drawGameExperienceUI draws all Phase 1-4 system UIs
+func (g *Game) drawGameExperienceUI(screen *ebiten.Image) {
+	// Phase 1: Status Effects UI
+	if g.effectManager != nil && g.effectUI != nil {
+		g.effectUI.Draw(screen, g.effectManager)
+		// Draw tooltip if hovering over an effect
+		activeEffect := g.effectUI.GetEffectAtPosition(g.effectManager, g.mouseX, g.mouseY)
+		if activeEffect != nil {
+			g.effectUI.DrawTooltip(screen, activeEffect, g.mouseX, g.mouseY)
+		}
+	}
+
+	// Phase 1: Achievement UI (only when visible)
+	if g.achievementManager != nil && g.achievementUI != nil && g.achievementUI.IsVisible() {
+		g.achievementUI.Draw(screen, g.achievementManager)
+	}
+
+	// Phase 2: Event UI
+	if g.eventUI != nil {
+		g.eventUI.Draw(screen)
+	}
 }
 
 // drawPortalPrompt shows prompt when near a portal
@@ -3184,10 +3501,16 @@ func (m model) Init() tea.Cmd {
 
 // Initial model for TUI
 func initialModel() model {
-	// Initialize with sample worlds and their seeds (like Minecraft)
-	worldSeeds := map[string]int64{
-		"World 1": 12345, // Known seed for sharing
-		"World 2": 67890, // Another known seed
+	// Discover existing worlds from filesystem and load their seeds
+	worlds, worldSeeds := discoverExistingWorlds()
+
+	// If no worlds exist, create default ones
+	if len(worlds) == 0 {
+		worlds = []string{"World 1", "World 2"}
+		worldSeeds = map[string]int64{
+			"World 1": 12345, // Known seed for sharing
+			"World 2": 67890, // Another known seed
+		}
 	}
 
 	return model{
@@ -3200,7 +3523,7 @@ func initialModel() model {
 		shouldExit:      false,
 		soundEnabled:    true,
 		graphicsQuality: "medium",
-		worlds:          []string{"World 1", "World 2"}, // Default worlds
+		worlds:          worlds,
 		worldSeeds:      worldSeeds,
 		selectedWorld:   0,
 		newWorldSeed:    "", // Empty = random seed
@@ -3211,6 +3534,35 @@ func initialModel() model {
 		},
 		selectedPlugin: 0,
 	}
+}
+
+// discoverExistingWorlds scans the worlds directory and loads saved world seeds from metadata
+func discoverExistingWorlds() ([]string, map[string]int64) {
+	worldsDir := config.GetWorldsDir()
+	worlds := []string{}
+	worldSeeds := make(map[string]int64)
+
+	entries, err := os.ReadDir(worldsDir)
+	if err != nil {
+		log.Printf("Could not read worlds directory: %v", err)
+		return worlds, worldSeeds
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			worldName := entry.Name()
+			// Try to load metadata to get the seed
+			storage := world.NewWorldStorage(worldName)
+			if metadata, err := storage.GetWorldMetadata(); err == nil {
+				seed := metadata.CreatedAt.UnixNano()
+				worlds = append(worlds, worldName)
+				worldSeeds[worldName] = seed
+				log.Printf("Discovered world '%s' with seed %d", worldName, seed)
+			}
+		}
+	}
+
+	return worlds, worldSeeds
 }
 
 // TUI update function for Bubble Tea
@@ -3396,6 +3748,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.worldSeeds = make(map[string]int64)
 					}
 					m.worldSeeds[m.newWorldName] = seed
+
+					// Save world metadata with seed to persist across sessions (fix random seed memory)
+					storage := world.NewWorldStorage(m.newWorldName)
+					metadata := world.WorldMetadata{
+						CreatedAt:  time.Now(),
+						LastSaved:  time.Now(),
+						ChunkCount: 0,
+						Version:    "1.0",
+					}
+					// Save metadata to persist the seed
+					metadataData, _ := json.MarshalIndent(metadata, "", "  ")
+					metadataFile := filepath.Join(storage.WorldDir, "metadata.json")
+					os.WriteFile(metadataFile, metadataData, 0644)
+					log.Printf("Created world '%s' with seed %d - saved to metadata", m.newWorldName, seed)
 
 					m.currentScreen = "worlds"
 					m.cursor = len(m.worlds) - 1
@@ -3786,6 +4152,19 @@ func NewSceneManager() *SceneManager {
 }
 
 func (sm *SceneManager) Update() error {
+	// Handle window closing - save game before exit
+	if ebiten.IsWindowBeingClosed() {
+		if sm.currentScene == "game" && sm.game != nil {
+			log.Println("Window closing - saving game...")
+			if err := sm.game.SaveGame(); err != nil {
+				log.Printf("Failed to save game on exit: %v", err)
+			} else {
+				log.Println("Game saved successfully on exit")
+			}
+		}
+		return ebiten.Termination
+	}
+
 	switch sm.currentScene {
 	case "menu":
 		err := sm.menuScene.Update()
@@ -3857,6 +4236,9 @@ func runGUI() {
 	ebiten.SetWindowResizable(false)
 	ebiten.SetTPS(FPS)
 
+	// Enable window closing handling to save game on exit
+	ebiten.SetWindowClosingHandled(true)
+
 	// Run the main loop - handles both menu and game within single RunGame
 	err := ebiten.RunGame(sceneManager)
 	if err != nil {
@@ -3878,6 +4260,9 @@ func startGameWithGUI(worldName string, worldSeed int64) {
 
 	// Enable input
 	ebiten.SetCursorMode(ebiten.CursorModeVisible)
+
+	// Enable window closing handling to save game on exit
+	ebiten.SetWindowClosingHandled(true)
 
 	// Create game with specified world and seed
 	game := NewGameWithWorld(worldName, worldSeed)
